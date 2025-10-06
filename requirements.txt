@@ -1,0 +1,9 @@
+Django
+sqlparse
+tzdata
+gunicorn
+requests
+fpdf2
+plotly
+whitenoise
+psycopg2-binary

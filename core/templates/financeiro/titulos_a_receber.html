@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+{% block title %}Títulos a Receber{% endblock %}
+
+{% block content %}
+<div class="content">
+  <h2 class="mt-4">Títulos Emitidos</h2>
+
+  <table class="table table-bordered table-striped" id="datatable">
+    <thead class="table-dark">
+      <tr>
+        <th>Cliente</th>
+        <th>Locação</th>
+        <th>Data Emissão</th>
+        <th>Vencimento</th>
+        <th>Desconto</th>
+        <th>Total</th>
+        <th>Status</th>
+        <th>Boleto</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for titulo in titulos %}
+      <tr>
+        <td>{{ titulo.cliente.razao }}</td>
+        <td>{{ titulo.locacao.codigo }}</td>
+        <td>{{ titulo.data_emissao|date:"d/m/Y" }}</td>
+        <td>{{ titulo.data_vencimento|date:"d/m/Y" }}</td>
+        <td>R$ {{ titulo.valor_desconto|floatformat:2 }}</td>
+        <td>R$ {{ titulo.valor_total|floatformat:2 }}</td>
+        <td>
+          {% if titulo.status == 'pago' %}
+            <span class="badge bg-success">Pago</span>
+          {% elif titulo.status == 'cancelado' %}
+            <span class="badge bg-danger">Cancelado</span>
+          {% else %}
+            <span class="badge bg-warning text-dark">Pendente</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if titulo.link_boleto %}
+            <a href="{{ titulo.link_boleto }}" target="_blank" class="btn btn-sm btn-outline-primary">
+              <i class="bi bi-receipt-cutoff"></i> Boleto
+            </a>
+          {% else %}
+            <span class="text-muted">Não gerado</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

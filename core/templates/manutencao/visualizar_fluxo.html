@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Fluxo da Manutenção</title>
+    <script src="https://unpkg.com/cytoscape/dist/cytoscape.min.js"></script>
+    <style>
+        #cy {
+            width: 100%;
+            height: 600px;
+            border: 1px solid #ccc;
+            display: block;
+        }
+        .concluida {
+            background-color: #4caf50;
+            color: white;
+        }
+        .atual {
+            background-color: #ff5722;
+            color: white;
+        }
+        .pendente {
+            background-color: #9e9e9e;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <h2 style="text-align:center;">Fluxo da Manutenção</h2>
+    <div id="cy"></div>
+
+    <script>
+        const elementos = {{ elementos_json|safe }};
+
+        const cy = cytoscape({
+            container: document.getElementById('cy'),
+            elements: elementos,
+            style: [
+                {
+                    selector: 'node',
+                    style: {
+                        'label': 'data(label)',
+                        'text-valign': 'center',
+                        'color': 'white',
+                        'text-outline-width': 2,
+                        'text-outline-color': '#555',
+                        'background-color': '#888',
+                        'width': 'label',
+                        'height': 'label',
+                        'padding': '10px'
+                    }
+                },
+                {
+                    selector: 'node[status="concluida"]',
+                    style: {'background-color': '#4caf50'}
+                },
+                {
+                    selector: 'node[status="atual"]',
+                    style: {'background-color': '#ff5722'}
+                },
+                {
+                    selector: 'node[status="pendente"]',
+                    style: {'background-color': '#9e9e9e'}
+                },
+                {
+                    selector: 'edge',
+                    style: {
+                        'width': 2,
+                        'line-color': '#555',
+                        'target-arrow-color': '#555',
+                        'target-arrow-shape': 'triangle'
+                    }
+                }
+            ],
+            layout: {
+                name: 'breadthfirst',
+                directed: true,
+                padding: 10,
+                spacingFactor: 1.5,
+                animate: true
+            }
+        });
+    </script>
+</body>
+</html>

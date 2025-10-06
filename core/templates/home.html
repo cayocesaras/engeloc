@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+
+{% block title %}Home - Lointer{% endblock %}
+
+{% block content %}
+        <div class="container mt-4">
+        <h2 class="mb-4">Dashboard de Locações</h2>
+
+        <div class="row text-center mb-4">
+            <div class="col-md-3">
+                <div class="card bg-light shadow-sm">
+                    <div class="card-body">
+                        <h5>Locações no Mês</h5>
+                        <h3>{{ total_locacoes }}</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-light shadow-sm">
+                    <div class="card-body">
+                        <h5>Receita do Mês</h5>
+                        <h3>R$ {{ receita_mes|floatformat:2 }}</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-light shadow-sm">
+                    <div class="card-body">
+                        <h5>Itens Locados</h5>
+                        <h3>{{ itens_locados }}</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-light shadow-sm">
+                    <div class="card-body">
+                        <h5>Clientes Atendidos</h5>
+                        <h3>{{ total_clientes }}</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                {{ plot_faturamento|safe }}
+            </div>
+            <div class="col-md-6">
+                {{ plot_pizza|safe }}
+            </div>
+            <!--<div class="col-md-6">
+                {{ plot_linhas|safe }}
+            </div>-->
+        </div>
+    </div>
+{% endblock %}

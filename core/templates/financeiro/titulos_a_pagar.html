@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+
+{% block title %}Contas a Pagar{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h3 class="mb-4">Contas a Pagar</h3>
+
+        <table class="table table-bordered table-striped" id="datatable">
+            <thead class="table-dark">
+                <tr>
+                    <th>ID</th>
+                    <th>Fornecedor</th>
+                    <th>Descrição</th>
+                    <th>Valor Total</th>
+                    <th>Emissão</th>
+                    <th>Vencimento</th>
+                    <th>Status</th>
+                    <th>Pagar</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for conta in contas %}
+                    <tr class="{% if conta.status == 'atrasado' %}table-danger{% elif conta.status == 'pago' %}table-success{% endif %}">
+                        <td>{{ conta.id }}</td>
+                        <td>{{ conta.fornecedor.razao }}</td>
+                        <td>{{ conta.descricao }}</td>
+                        <td>R$ {{ conta.valor|floatformat:2 }}</td>
+                        <td>{{ conta.data_emissao|date:"d/m/Y" }}</td>
+                        <td>{{ conta.data_vencimento|date:"d/m/Y" }}</td>
+                        <td>
+                            <span class="badge 
+                                {% if conta.status == 'pendente' %}bg-warning text-dark
+                                {% elif conta.status == 'pago' %}bg-success
+                                {% elif conta.status == 'atrasado' %}bg-danger
+                                {% endif %}">
+                                {{ conta.get_status_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <a href="#" class="btn btn-sm btn-success"><i class="bi bi-bag"></i></a>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+</div>
+{% endblock %}

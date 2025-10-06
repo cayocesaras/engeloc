@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block title %}Manutençäo{% endblock %}
+
+{% block content %}
+    <div class="content" id="content">
+      <h2 class="mt-4">Funções</h2>
+
+      <div class="tab-content" id="myTabContent">
+        <div class="tab-pane fade show active" id="home-tab-pane" role="tabpanel" aria-labelledby="home-tab" tabindex="0">
+            <table id="datatable" class="table table-striped table-bordered">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Descrição</th>
+                        <th>Acessar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                        <tr>
+                            <td>Fluxo</td>
+                            <td>Fluxo de Manutenção</td>
+                            <td>
+                                <a href="{% url 'fluxo_manutencao' %}" class="btn btn-lointer-salvar" role="button" aria-pressed="true">
+                                    <i class="bi bi-arrow-up-square"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Etapas</td>
+                            <td>Cadastro de Etapas da Manutenção</td>
+                            <td>
+                                <a href="{% url 'etapas_manutencao' %}" class="btn btn-lointer-salvar" role="button" aria-pressed="true">
+                                    <i class="bi bi-arrow-up-square"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Manutenção</td>
+                            <td>Cadastro de Manutenção</td>
+                            <td>
+                                <a href="{% url 'manutencoes' %}" class="btn btn-lointer-salvar" role="button" aria-pressed="true">
+                                    <i class="bi bi-arrow-up-square"></i>
+                                </a>
+                            </td>
+                        </tr>
+                </tbody>    
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

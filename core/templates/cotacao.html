@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+
+{% block title %}Registrar Cotação{% endblock %}
+
+{% block actionMenu %}
+<!--<a class="navbar-brand text-white" href="#" title="Nova Locação"
+   data-bs-toggle="offcanvas" data-bs-target="#offcanvasRight" aria-controls="offcanvasRight">
+   <i class="bi bi-plus-square-fill text-white"></i>
+</a>-->
+{% endblock %}
+
+{% block content %}
+
+<!-- TABELA DE LOCAÇÕES -->
+<div class="content" id="content">
+  <h3 class="mt-4">Cotações</h3>
+  <form method="post">
+      {% csrf_token %}
+
+      <!-- Form principal -->
+      <div class="row mb-3">
+        {% for field in locacao_form.visible_fields %}
+        <div class="col-md-4 form-floating mb-2">
+          {{ field }}
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Formset -->
+      {{ formset.management_form }}
+      <div id="formset">
+        {% for form in formset %}
+        <div class="formset-form row mb-3 border p-2 rounded">
+          {% for field in form.visible_fields %}
+          {% if field.name != 'DELETE' %}
+          <div class="col-md-6 mb-3 form-floating">
+            {{ field }}
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+          </div>
+          {% endif %}
+          {% endfor %}
+          <div class="col-md-12 text-end">
+            <button type="button" class="btn btn-danger btn-sm remove-row">Remover</button>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="col-md-12 text-end">
+          <button type="button" id="add-form" class="btn btn-secondary">Adicionar Produto</button>
+          <button type="submit" class="btn btn-success">Registrar Cotação</button>
+      </div>
+    </form><br><br>
+
+  <div class="tab-content table-responsive" id="myTabContent">
+    <div class="tab-pane fade show active">
+        <table id="datatable" class="table table-striped table-bordered">
+        <thead>
+          <tr>
+            <th>Cliente</th>
+            <th>Data</th>
+            <th>Solicitante</th>
+            <th>Itens</th>
+            <th>Status</th>
+            <th>Visualizar</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for locacao in locacoes %}
+          <tr>
+            <td>{{ locacao.cliente }}</td>
+            <td>{{ locacao.data|date:"d/m/Y" }}</td>
+            <td>{{ locacao.solicitante }}</td>
+            <td>
+              <ul>
+                {% for item in locacao.itens.all %}
+                <li>{{ item.produto.descricao }} ({{ item.quantidade }})</li>
+                {% endfor %}
+              </ul>
+            </td>
+            <td>{{ locacao.status }}</td>
+            <td>
+              <a href="{% url 'imprimir_cotacao' locacao.id %}"
+                target="_blank"
+                class="btn btn-danger btn-sm">
+                <i class="bi bi-file-earmark-pdf"></i>
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

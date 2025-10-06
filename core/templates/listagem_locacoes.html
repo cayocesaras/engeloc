@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+
+{% block title %}Registrar Locação{% endblock %}
+
+{% block actionMenu %}
+{% endblock %}
+
+{% block content %}
+
+<div class="content" id="content">
+    <h3 class="mt-4">Locações</h3>
+
+    <div class="tab-content table-responsive">
+        <div class="tab-pane fade show active">
+            <table id="datatable" class="table table-striped table-bordered">
+                <thead>
+                    <tr>
+                        <th>Cliente</th>
+                        <th>Data</th>
+                        <th>Solicitante</th>
+                        <th>Itens</th>
+                        <th>Espelho</th>
+                        <th>Entrega</th>
+                        <th>Devolução</th>
+                        <!--<th>Assinatura</th>-->
+                        <th>Boleto</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for locacao in locacoes %}
+                    <tr>
+                        <td>{{ locacao.cliente }}</td>
+                        <td>{{ locacao.data|date:"d/m/Y" }}</td>
+                        <td>{{ locacao.solicitante }}</td>
+                        <td>
+                            <ul>
+                                {% for item in locacao.itens.all %}
+                                <li>{{ item.produto.descricao }} ({{ item.quantidade }})</li>
+                                {% endfor %}
+                            </ul>
+                        </td>
+                        <td>
+                            <a href="{% url 'imprimir_espelho' locacao.id %}" target="_blank" class="btn btn-danger btn-sm">
+                                <i class="bi bi-file-earmark-pdf"></i>
+                            </a>
+                        </td>
+                        <td>
+                            <a href="#" class="btn btn-sm" data-bs-toggle="modal" data-bs-target="#itemModal-{{ locacao.id }}">
+                                <i class="bi bi-truck"></i>
+                            </a>
+                        </td>
+                        <td>
+                            <a href="{% url 'cad_devolucao' locacao.id %}" class="btn btn-primary btn-sm">
+                                <i class="bi bi-arrow-down-square-fill"></i>
+                            </a>
+                        </td>
+                        <!--<td>
+                            <a href="{% url 'enviar_assinatura' locacao.id %}" class="btn btn-primary btn-sm">
+                                <i class="bi bi-pencil-square"></i>
+                            </a>
+                        </td>-->
+                        <td>
+                            <a href="#" class="btn btn-primary btn-sm">
+                                <i class="bi bi-upc"></i>
+                            </a>
+                        </td>
+                    </tr>
+
+                    <div class="modal fade" id="itemModal-{{ locacao.id }}" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <form method="POST" action="{% url 'entrega_locacao' %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="locacao_id" value="{{ locacao.id }}">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Cautela de Entrega para Locação {{ locacao.id }}</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        {% for item in locacao.itens.all %}
+                                        {% if item.saldo > 0 %}
+                                        <div class="mb-3">
+                                            <label><b>Item:</b></label>
+                                            <span>{{ item.produto.descricao }}</span>
+                                            <input type="hidden" name="item_ids" value="{{ item.id }}">
+                                            <input type="hidden" name="produto_ids" value="{{ item.produto.codigo }}">
+                                            <br>
+                                            <label>Quantidade:</label>
+                                            <input type="number" name="quantidade_item_{{ item.id }}" value="{{ item.saldo }}" class="form-control" min="0" max="{{ item.saldo }}">
+                                        </div>
+                                        <hr>
+                                        {% else %}
+                                            <p class="text-muted">
+                                                {{ item.produto.descricao }} - já totalmente entregue.
+                                            </p>
+                                        {% endif %}
+                                        {% endfor %}
+                                        {% if locacao.possui_itens_com_saldo %}
+                                        <div class="mb-3">
+                                            <label>Motorista:</label>
+                                            <input class="form-control" type="text" name="motorista" value="{{locacao.itens.all.saldo}}">
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Cancelar</button>
+                                        {% if locacao.possui_itens_com_saldo %}
+                                        <button type="submit" class="btn btn-primary">Gerar</button>
+                                        {% endif %}
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+
+{% block title %}Listagem de Manutenções{% endblock %}
+
+{% block content %}
+<div class="content" id="content">
+  <h3 class="mt-4">Listagem de Manutenções</h3>
+
+  <div class="tab-content" id="myTabContent">
+    <div class="tab-pane fade show active">
+      <table id="datatable" class="table table-striped table-bordered">
+        <thead>
+          <tr>
+            <th>Número O.S.</th>
+            <th>Produto</th>
+            <th>Justificativa</th>
+            <th>Início</th>
+            <th>Fim</th>
+            <th>Visualizar</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for manutencao in manutencoes %}
+          <tr>
+            <td>{{ manutencao.id }}</td>
+            <td>{{ manutencao.produto }}</td>
+            <td>{{ manutencao.observacoes }}</td>
+            <td>{{ manutencao.data_inicio|date:"d/m/Y" }}</td>
+            <td>{{ manutencao.data_fim|date:"d/m/Y" }}</td>
+            <td>
+              <a href="{% url 'visualizar_manutencao' manutencao.id %}" class="btn btn-primary btn-sm">
+                <i class="bi bi-eye"></i>
+              </a>
+            </td>
+            <td>
+            {% if manutencao.status == 'aprovada' %}
+              <span class="badge bg-success">Aprovada</span>
+            {% else %}
+              <span class="badge bg-warning text-dark">Pendente</span>
+            {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

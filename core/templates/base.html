@@ -1,0 +1,796 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width" />
+    <title>{% block title %}Lointer{% endblock %}</title>
+    <link rel="icon" href="{% static 'favicon.ico' %}" type="image/x-icon">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css">
+    <link href="https://cdn.datatables.net/1.13.5/css/jquery.dataTables.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/buttons/2.3.5/css/buttons.dataTables.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/responsive/3.0.5/css/responsive.dataTables.min.css" rel="stylesheet">
+    
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.3/dist/jquery.validate.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.3/dist/additional-methods.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.3/dist/localization/messages_pt_BR.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.5/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.3.5/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.3.5/js/buttons.html5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.3.5/js/buttons.print.min.js"></script>
+    <script src="https://cdn.datatables.net/responsive/3.0.5/js/dataTables.responsive.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        @font-face {
+            font-family: 'Gilroy Regular';
+            src: url('/static/Gilroy-Regular.ttf');
+        }
+        @font-face{
+            font-family: 'Neulis Cursive';
+            src: url('/static/Neulis-Cursive-Regular.otf');
+        }
+        body {
+                margin-top: 0;
+                font-family: 'Gilroy Regular';
+                padding-top: 50px; /* Ajuste conforme a altura da navbar */
+            }
+        .content{
+                padding: 20px;
+            }
+        .sidebar a {
+            color: white;
+            text-decoration: none;
+            padding: 10px 15px;
+            display: flex;
+            align-items: center;
+            font-size: 18px;
+        }
+        .sidebar a:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+        }
+        .sidebar i {
+            margin-right: 10px;
+            font-size: 20px;
+        }
+        .form-control {
+            border-color: #2c2762;
+            box-shadow: none;
+        }
+        .form-control:focus {
+            box-shadow: 0 0 7px rgba(44,39,98);
+            border-color: #2c2762;
+        }
+        .form-control:hover {
+            box-shadow: 0 0 7px rgba(44,39,98);
+            border-color: #2c2762;
+        }
+        .form-floating label {
+            color: #6c757d;
+        }
+        .form-floating .form-control:focus~label {
+            color: #2c2762;
+        }
+        .btn-lointer-salvar
+        {
+            background-color: #2c2762; color: #fff;
+        }
+        .btn-lointer-salvar:hover
+        {
+            box-shadow: 0 0 5px rgba(44,39,98);
+            background-color: #2c2762; color: #fff;
+        }
+        .dataTables_length select {
+            width: 100px;
+            border-color: #2c2762 !important;
+        }
+        .dataTables_length select:hover {
+            box-shadow: 0 0 5px rgba(44,39,98);
+            width: 100px;
+            border-color: #2c2762 !important;
+        }
+        .dataTables_length select:focus {
+            box-shadow: 0 0 5px rgba(44,39,98);
+            width: 100px;
+            border-color: #2c2762 !important;
+        }
+        .dataTables_filter input {
+            border-color: #2c2762 !important;
+            padding: 5px 10px;
+        }
+        .dataTables_filter input:hover {
+            border-color: #2c2762 !important;
+            box-shadow: 0 0 5px rgba(44,39,98);
+        }
+        .dataTables_filter input:focus {
+            border-color: #2c2762 !important;
+            box-shadow: 0 0 5px rgba(44,39,98);
+        }
+        .table tr th{
+            background-color: #2c2762;
+            color: white;
+        }
+        .card-body
+        {
+            background-color: #2c2762;
+            color: white;
+        }
+        .dt-buttons .dt-button {
+            background-color: #2c2762 !important;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            margin-right: 5px;
+        }
+        .dt-buttons .dt-button:hover {
+            box-shadow: 0 0 5px rgba(44,39,98);
+            background-color: #2c2762 !important;
+            color: white;
+        }
+        .dt-buttons .dt-button:focus {
+            box-shadow: 0 0 5px rgba(44,39,98);
+            background-color: #2c2762 !important;
+            color: white;
+        }
+        .dt-buttons .dt-button:active {
+            box-shadow: 0 0 5px rgba(44,39,98);
+            background-color: #2c2762 !important;
+            color: white;
+        }
+        .bi {
+            color: #47ea89 !important;
+        }
+        .btn{
+            background-color: #2c2762 !important;
+        }
+        .navbar-nav a {
+            color: #fff;
+        }
+
+        .navbar-nav a:hover {
+            color: #47ea89;
+        }
+
+        /* Garante que o dropdown-toggle tenha a cor correta */
+        .navbar-nav .nav-link.dropdown-toggle {
+            color: #fff;
+        }
+
+        /* Estilo para quando o link está ativo (ex: na página atual) */
+        .navbar-nav .nav-link.active {
+            color: #47ea89;
+        }
+
+        /* Estilo para quando o dropdown está aberto */
+        .navbar-nav .nav-item.dropdown.show .nav-link.dropdown-toggle {
+            color: #47ea89;
+        }
+
+        .nav-bar-brand{
+            font-family: 'Neulis Cursive' !important;
+            color: #47ea89 !important;
+        }
+        .navbar-brand:hover{
+            color: #47ea89;
+        }
+        .navbar-brand:visited {
+            color: #47ea89;
+        }
+
+        .dropdown-menu a {
+            color: #2c2762;
+        }
+
+        .dropdown-menu a:hover {
+            color: #47ea89;
+            background-color: #f8f9fa; /* Cor de fundo no hover para melhor visibilidade */
+        }
+
+        .dropdown-menu .dropdown-toggle::after {
+            vertical-align: middle;
+            border-left: 4px solid;
+            border-bottom: 4px solid transparent;
+            border-top: 4px solid transparent;
+        }
+
+        .dropdown-menu .dropdown-toggle {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .dropdown-menu .dropdown-menu {
+            margin-left: 0;
+            margin-top: 0;
+            position: absolute;
+            top: 0;
+            left: 100%;
+            min-width: 100%;
+        }
+    </style>
+</head>
+<body>
+    {% block content %}
+    {% endblock %}
+    <nav class="navbar navbar-expand-lg fixed-top">
+    <div class="container-fluid"  style="background-color: #2c2762;">
+        <a class="navbar-brand" href="{% url 'home' %}"  style="color: #47ea89 !important">
+            <img src="{% static 'icone-lointer.svg' %}" alt="Logo" width="30" height="24" class="d-inline-block align-text-top">
+            Lointer
+        </a>
+        <div class="collapse navbar-collapse" id="navbarNavDropdown">
+            <ul class="navbar-nav">
+                <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownSuprimentos" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    Suprimentos
+                </a>
+                <ul class="dropdown-menu" aria-labelledby="navbarDropdownSuprimentos">
+                    <li class="nav-item dropdown dropend">
+                    <a class="dropdown-item dropdown-toggle" href="#" id="navbarDropdownCadastro" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        Cadastro
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="navbarDropdownCadastro">
+                        <li><a class="dropdown-item" href="{% url 'produtos' %}">Produto de Locação</a></li>
+                        <li><a class="dropdown-item" href="{% url 'itens_compra' %}">Item de Compra</a></li>
+                        <!--<li><hr class="dropdown-divider"></li>-->
+                        <li><a class="dropdown-item" href="{% url 'unidade_medida' %}">Unidade de Medida</a></li>
+                        <li><a class="dropdown-item" href="{% url 'grupo_produtos' %}">Grupo de Produto</a></li>
+                        <li><a class="dropdown-item" href="{% url 'fornecedores' %}">Fornecedor</a></li>
+                    </ul>
+                    </li>
+                    <li class="nav-item dropdown dropend">  
+                    <a class="dropdown-item dropdown-toggle" href="#" id="navbarDropdownCadastro" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        Armazém
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="navbarDropdownCadastro">
+                        <li><a class="dropdown-item" href="{% url 'listagem_itens' %}">Listagem de Itens</a></li>
+                        <li><a class="dropdown-item" href="{% url 'mov_entrada' %}">Entrada de Itens no Estoque</a></li>
+                        <!--<li><hr class="dropdown-divider"></li>-->
+                        <li><a class="dropdown-item" href="#">Empréstimo</a></li>
+                        <li><a class="dropdown-item" href="#">Devolução</a></li>
+                    </ul>
+                    </li>
+                    <li class="nav-item dropdown dropend">  
+                    <a class="dropdown-item dropdown-toggle" href="#" id="navbarDropdownCadastro" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        Compras
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="navbarDropdownCadastro">
+                        <li><a class="dropdown-item" href="{% url 'solicitacaodecompra' %}">Solicitação de Compra</a></li>
+                        <li><a class="dropdown-item" href="#">Orçamento de Compra</a></li>
+                        <!--<li><hr class="dropdown-divider"></li>-->
+                        <li><a class="dropdown-item" href="{% url 'aprovar_compra' %}">Aprovação de Solicitação</a></li>
+                    </ul>
+                    </li>
+                </ul>
+                </li>
+
+                <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownSuprimentos" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    Comercial
+                </a>
+                <ul class="dropdown-menu" aria-labelledby="navbarDropdownSuprimentos">
+                    <li class="nav-item dropdown">
+                    <a class="dropdown-item" href="{% url 'empresas' %}" id="navbarDropdownCadastro" role="button">
+                        Empresa
+                    </a>
+                    </li>
+                    <li class="nav-item dropdown dropend">
+                    <a class="dropdown-item dropdown-toggle" href="#" id="navbarDropdownCadastro" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        Clientes
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="navbarDropdownCadastro">
+                        <li><a class="dropdown-item" href="{% url 'clientes' %}">Cadastrar cliente</a></li>
+                        <li><a class="dropdown-item" href="#">Consultar cliente</a></li>
+                        <!--<li><hr class="dropdown-divider"></li>-->
+                        <li><a class="dropdown-item" href="#">Listagem de clientes</a></li>
+                    </ul>
+                    </li>
+                    <li class="nav-item dropdown dropend">
+                    <a class="dropdown-item dropdown-toggle" href="#" id="navbarDropdownCadastro" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        Locação
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="navbarDropdownCadastro">
+                        <li><a class="dropdown-item" href="{% url 'cotacao' %}">Gerar cotação</a></li>
+                        <li><a class="dropdown-item" href="{% url 'aprovar_cotacao' %}">Aprovar cotação</a></li>
+                        <!--<li><hr class="dropdown-divider"></li>-->
+                        <li><a class="dropdown-item" href="{% url 'listagem_locacoes' %}">Listagem locações</a></li>
+                        <li><a class="dropdown-item" href="#">Renovar locação</a></li>
+                        <li><a class="dropdown-item" href="#">Devolução de produtos</a></li>
+                        <li><a class="dropdown-item" href="#">Ressarcimento por perda/defeito</a></li>
+                        <li><a class="dropdown-item" href="#">Relatório</a></li>
+                    </ul>
+                    </li>
+                </ul>
+                </li>
+               
+                <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownSuprimentos" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    Logística
+                </a>
+                <ul class="dropdown-menu" aria-labelledby="navbarDropdownSuprimentos">
+                    <li class="nav-item dropdown dropend">
+                    <a class="dropdown-item dropdown-toggle" href="#" id="navbarDropdownCadastro" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        Estoque
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="navbarDropdownCadastro">
+                        <li><a class="dropdown-item" href="{% url 'listagem_produtos' %}">Listagem de Itens do Estoque</a></li>
+                        <li><a class="dropdown-item" href="{% url 'saldos' %}">Saldo do Estoque</a></li>
+                        <!--<li><hr class="dropdown-divider"></li>-->
+                        <li><a class="dropdown-item" href="{% url 'mov_entrada' %}">Entrada de Produto para Locação</a></li>
+                    </ul>
+                    </li>
+                    <li class="nav-item dropdown dropend">
+                    <a class="dropdown-item dropdown-toggle" href="#" id="navbarDropdownCadastro" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        Retirada/Devolução
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="navbarDropdownCadastro">
+                        <li><a class="dropdown-item" href="{% url 'listagem_cautela_entregas' %}">Listagem cautelas de retirada</a></li>
+                        <li><a class="dropdown-item" href="{% url 'listagem_cautela_devolucoes' %}">Listagem cautelas de devolução</a></li>
+                        <!--<li><hr class="dropdown-divider"></li>-->
+                    </ul>
+                    </li>
+                </ul>
+                </li>
+
+                <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownSuprimentos" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    Manutenção
+                </a>
+                <ul class="dropdown-menu" aria-labelledby="navbarDropdownSuprimentos">
+                    <li class="nav-item dropdown dropend">
+                    <a class="dropdown-item dropdown-toggle" href="#" id="navbarDropdownCadastro" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        Cadastro
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="navbarDropdownCadastro">
+                        <li><a class="dropdown-item" href="{% url 'fluxo_manutencao' %}">Cadastrar fluxo/processo</a></li>
+                        <li><a class="dropdown-item" href="{% url 'etapas_manutencao' %}">Cadastrar etapa do processo</a></li>
+                        <!--<li><hr class="dropdown-divider"></li>-->
+                        <li><a class="dropdown-item" href="{% url 'manutencoes' %}">Cadastrar manutenção</a></li>
+                    </ul>
+                    </li>
+                    <li class="nav-item dropdown dropend">
+                    <a class="dropdown-item dropdown-toggle" href="#" id="navbarDropdownCadastro" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        Gestão de Manutenção
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="navbarDropdownCadastro">
+                        <li><a class="dropdown-item" href="#">Abrir O.S. de manutenção</a></li>
+                        <li><a class="dropdown-item" href="{% url 'listagem_manutencao' %}">Listar todas as O.S.</a></li>
+                        <!--<li><hr class="dropdown-divider"></li>-->
+                        <li><a class="dropdown-item" href="{% url 'aprovar_manutencoes' %}">Aprovar O.S. de manutenção</a></li>
+                        <li><a class="dropdown-item" href="{% url 'grade_manutencoes' %}">Grade de manutenção</a></li>
+                        <li><a class="dropdown-item" href="#">Produto do dia</a></li>
+                    </ul>
+                    </li>
+                </ul>
+                </li>
+
+                <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownSuprimentos" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    Financeiro
+                </a>
+                <ul class="dropdown-menu" aria-labelledby="navbarDropdownSuprimentos">
+                    <li class="nav-item dropdown dropend">
+                    <a class="dropdown-item dropdown-toggle" href="#" id="navbarDropdownCadastro" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        Cadastro
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="navbarDropdownCadastro">
+                        <li><a class="dropdown-item" href="#">Conta</a></li>
+                    </ul>
+                    <ul class="dropdown-menu" aria-labelledby="navbarDropdownCadastro">
+                        <li><a class="dropdown-item" href="#">Condição de Pagamento</a></li>
+                    </ul>
+                    <ul class="dropdown-menu" aria-labelledby="navbarDropdownCadastro">
+                        <li><a class="dropdown-item" href="#">Instruções de Cobrança</a></li>
+                    </ul>
+                    </li>
+                    <li class="nav-item dropdown dropend">
+                    <a class="dropdown-item dropdown-toggle" href="#" id="navbarDropdownCadastro" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        Contas a Pagar
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="navbarDropdownCadastro">
+                        <li><a class="dropdown-item" href="{% url 'titulos_a_pagar' %}">Titulos em aberto</a></li>
+                    </ul>
+                    </li>
+                    <li class="nav-item dropdown dropend">
+                    <a class="dropdown-item dropdown-toggle" href="#" id="navbarDropdownCadastro" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        Contas a Receber
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="navbarDropdownCadastro">
+                        <li><a class="dropdown-item" href="{% url 'titulos_a_receber' %}">Titulos em aberto</a></li>
+                    </ul>
+                    </li>
+                </ul>
+                </li>
+
+                <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownSuprimentos" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    Sistema
+                </a>
+                <ul class="dropdown-menu" aria-labelledby="navbarDropdownSuprimentos">
+                    <li class="nav-item dropdown">
+                    <a class="dropdown-item" href="{% url 'criar_grupo_e_permissoes' %}" id="navbarDropdownCadastro" role="button">
+                        Perfis e Permissões
+                    </a>
+                    </li>
+                </ul>
+                <ul class="dropdown-menu" aria-labelledby="navbarDropdownSuprimentos">
+                    <li class="nav-item dropdown">
+                    <a class="dropdown-item" href="{% url 'logout' %}" id="navbarDropdownCadastro" role="button">
+                        Sair
+                    </a>
+                    </li>
+                </ul>
+                </li>
+
+            </ul>
+        </div>
+    </div>
+    </nav>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+        const dropdownToggles = document.querySelectorAll('.dropdown-toggle');
+        
+        dropdownToggles.forEach(function(toggle) {
+            toggle.addEventListener('mouseenter', function() {
+            // Fecha todos os outros dropdowns abertos antes de abrir o atual
+            const openDropdowns = document.querySelectorAll('.dropdown-menu.show');
+            openDropdowns.forEach(function(openDropdown) {
+                if (!openDropdown.contains(toggle)) {
+                openDropdown.classList.remove('show');
+                }
+            });
+            
+            const submenu = this.nextElementSibling;
+            if (submenu && submenu.classList.contains('dropdown-menu')) {
+                submenu.classList.add('show');
+            }
+            });
+
+            toggle.parentNode.addEventListener('mouseleave', function() {
+            const submenu = this.querySelector('.dropdown-menu');
+            if (submenu) {
+                submenu.classList.remove('show');
+            }
+            });
+        });
+        });
+
+
+        $(document).ready(function () {
+
+        $('#id_quantidade').change(function(){
+            valor_unitario = parseFloat($('#id_valor_unitario').val()) || 0;
+            quantidade     = parseFloat($(this).val())
+            valor_total    = valor_unitario*quantidade
+            $('#id_valor_total').val(valor_total).mask('money') || 0
+        })
+
+    $('#id_tipo').change(function () {
+        let tipo = $(this).val();
+        let cnpjCpfInput = $('#id_cnpj_cpf');
+
+        if (tipo === "Jurídica") {
+            cnpjCpfInput.attr('data-mask', '00.000.000/0000-00')
+            cnpjCpfInput.attr('placeholder', 'Digite o CNPJ');
+            $('#id_fantasia').show();
+            $('#id_estadual').show();
+            $('#id_municipal').show();
+            $('#id_suframa').show();
+            $('[data-mask]').each(function () {
+                var mask = $(this).attr('data-mask');
+                $(this).mask(mask);
+            });
+        } else if (tipo === "Física") {
+            cnpjCpfInput.attr('data-mask', '000.000.000-00');
+            cnpjCpfInput.attr('placeholder', 'Digite o CPF');
+            $('#id_razao').attr('placeholder', 'Digite o nome completo');
+            $('#id_fantasia').hide();
+            $('#id_estadual').hide();
+            $('#id_municipal').hide();
+            $('#id_suframa').hide();
+            $('[data-mask]').each(function () {
+                var mask = $(this).attr('data-mask');
+                $(this).mask(mask);
+            });
+        } else {
+            cnpjCpfInput.removeAttr('data-mark').attr('placeholder', 'Digite o CPF ou CNPJ');
+        }
+
+        // Opcional: Limpa o campo ao mudar de tipo
+        cnpjCpfInput.val('');
+    });
+            // Função para buscar o CEP na API do ViaCEP
+            function buscarCEP(cep) {
+                cep = cep.replace(/\D/g, ''); // Remove caracteres não numéricos
+
+                if (cep.length === 8) { // O CEP deve ter 8 dígitos
+                    $.getJSON(`https://viacep.com.br/ws/${cep}/json/`, function (dados) {
+                        if (!dados.erro) {
+                            $('#id_logradouro').val(dados.logradouro);
+                            $('#id_complemento').val(dados.complemento);
+                            $('#id_bairro').val(dados.bairro);
+                        } else {
+                            alert('CEP não encontrado!');
+                        }
+                    });
+                }
+            }
+
+            // Função para buscar o CNPJ na API do CNPJws
+            function buscarCNPJ(cnpj) {
+                cnpj = cnpj.replace(/\D/g, ''); // Remove caracteres não numéricos
+
+                if (cnpj.length === 14) { // O CNPJ deve ter 14 dígitos
+                    $.getJSON(`https://publica.cnpj.ws/cnpj/${cnpj}`, function (dados) {
+                        if(dados.status === 400) {
+                            alert("CNPJ inválido!");
+                        }
+                        else
+                        {
+                            $('#id_razao').val(dados.razao_social);
+                            $('#id_fantasia').val(dados.estabelecimento.nome_fantasia);
+                            $('#id_cep').val(dados.estabelecimento.cep);
+                            $('#id_numero').val(dados.estabelecimento.numero);
+                            $('#id_logradouro').val(dados.estabelecimento.logradouro);
+                            $('#id_bairro').val(dados.estabelecimento.bairro);
+                            $('#id_complemento').val(dados.estabelecimento.complemento);
+                            $('#id_estadual').val(dados.estabelecimento.inscricoes_estaduais[0].inscricao_estadual);
+                            if (dados.estabelecimento.situacao_cadastral != 'Ativa') {
+                                alert('CNPJ inativo ou cancelado!');
+                            }
+                            
+                        }
+                    });
+                }
+            }
+
+            $('#id_uf').change(function () {
+                let uf = $(this).val();
+                let cidadeDropdown = $('#id_cidade');
+
+                cidadeDropdown.empty().append('<option value="">Carregando...</option>');
+
+                if (uf) {
+                    let url = `https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios`;
+
+                    $.getJSON(url, function (data) {
+                        cidadeDropdown.empty().append('<option value="">Selecione uma cidade</option>');
+                        $.each(data, function (index, cidade) {
+                            cidadeDropdown.append(`<option value="${cidade.nome}">${cidade.nome}</option>`);
+                        });
+                    }).fail(function () {
+                        cidadeDropdown.empty().append('<option value="">Erro ao carregar cidades</option>');
+                    });
+                } else {
+                    cidadeDropdown.empty().append('<option value="">Selecione uma UF primeiro</option>');
+                }
+            });
+
+
+            // Dispara a busca quando o campo perde o foco (onBlur)
+            $('#id_cep').blur(function () {
+                buscarCEP($(this).val());
+            });
+
+            // Dispara a busca quando o campo perde o foco (onBlur)
+            $('#id_cnpj').blur(function () {
+                buscarCNPJ($(this).val());
+            });
+
+            // Dispara a busca quando o campo perde o foco (onBlur)
+            $('#id_cnpj_cpf').blur(function () {
+                if ($('#id_tipo').val() === 'Jurídica') {
+                    buscarCNPJ($(this).val());
+                }
+            });
+
+        // Função para aplicar eventos ao formulário de item
+        function aplicarEventosAoItem(form) {
+            form.find('.produto-select').change(function () {
+            const produtoId = $(this).val();
+            const parent = $(this).closest('.formset-form');
+
+            $.get("{% url 'saldo_estoque_produto_item' %}", { produto_id: produtoId }, function(data, status) {
+                parent.find('.saldo-input').val(data.saldo);
+                parent.find('.preco-input').val(data.preco.replace('.', ','));
+                calcularTotalGeral();
+            });
+            });
+
+            form.find('.quantidade-input, .preco-input').on('change keyup', function () {
+                calcularTotalGeral();
+            });
+
+        }
+
+        // Aplica nos formulários já existentes
+        $('#formset .formset-form').each(function () {
+            aplicarEventosAoItem($(this));
+        });
+
+        // Lógica para adicionar novo formulário
+        let formset = $('#formset');
+        let addFormBtn = $('#add-form');
+        let totalForms = $('input[name$="TOTAL_FORMS"]');
+
+        addFormBtn.on('click', function () {
+        let currentFormCount = parseInt(totalForms.val());
+        let newForm = formset.find('.formset-form:first').clone(true);
+
+        newForm.find('input, select').each(function () {
+            let name = $(this).attr('name').replace(/-\d+-/, `-${currentFormCount}-`);
+            let id = $(this).attr('id').replace(/-\d+-/, `-${currentFormCount}-`);
+            $(this).attr({ 'name': name, 'id': id });
+
+            // Limpa valores
+            if ($(this).attr('type') !== 'hidden') {
+            $(this).val('');
+            }
+
+            // Reatribui classes corretamente
+            if (name.includes('quantidade')) {
+            $(this).addClass('quantidade-input');
+            }
+            if (name.includes('preco')) {
+            $(this).addClass('preco-input');
+            }
+            if (name.includes('saldo')) {
+            $(this).addClass('saldo-input');
+            }
+            if (name.includes('produto')) {
+            $(this).addClass('produto-select');
+            }
+        });
+
+        newForm.appendTo(formset);
+        totalForms.val(currentFormCount + 1);
+
+        aplicarEventosAoItem(newForm); // reaplica os eventos no novo formulário
+        });
+
+        // Remove item e reindexa os forms
+        formset.on('click', '.remove-row', function () {
+            $(this).closest('.formset-form').remove();
+
+            let forms = formset.find('.formset-form');
+            totalForms.val(forms.length);
+
+            forms.each(function (index) {
+            $(this).find('input, select, textarea').each(function () {
+                let name = $(this).attr('name').replace(/-\d+-/, `-${index}-`);
+                let id = $(this).attr('id').replace(/-\d+-/, `-${index}-`);
+                $(this).attr({'name': name, 'id': id});
+            });
+            });
+        });
+        // Aplica a máscara automaticamente aos campos com o atributo data-mask
+        $('[data-mask]').each(function () {
+            var mask = $(this).attr('data-mask');
+            if (mask === 'money') {
+                $(this).mask('000.000.000,00', { reverse: true });
+            } else {
+                $(this).mask(mask);
+            }
+        });
+    });
+
+    function calcularTotalGeral() {
+        let totalGeral = 0;
+
+        $('#formset .formset-form').each(function () {
+            let quantidade = parseFloat($(this).find('.quantidade-input').val().replace(',', '.')) || 0;
+            let preco = parseFloat($(this).find('.preco-input').val().replace(',', '.')) || 0;
+            totalGeral += quantidade * preco;
+        });
+
+        // Aplica desconto, se houver
+        let desconto = parseFloat($('#id_desconto').val().replace('.', '').replace(',', '.')) || 0;
+        let totalComDesconto = totalGeral - desconto;
+
+        if (totalComDesconto < 0) {
+            totalComDesconto = 0;
+        }
+
+        $('#id_total').val(totalComDesconto.toFixed(2).replace('.', ','));
+    }
+
+    $(document).ready(function() {
+    $('#datatable').DataTable({
+        language: {
+            "lengthMenu": "_MENU_ Registros por página",
+            "zeroRecords": "Nenhum registro encontrado",
+            "info": "Total de registros: _TOTAL_",
+            "infoEmpty": "Nenhum registro disponível",
+            "infoFiltered": "(Total de registros: _TOTAL_)",
+            "search": "Buscar:",
+            "paginate": {
+                "first": "Primeira",
+                "last": "Última",
+                "next": "Próxima",
+                "previous": "Anterior"
+            }
+        }
+    });
+});
+
+    $(document).ready(function() {
+    $('#relatorio').DataTable({
+        dom: 'Bfrtip', // Adiciona a área para os botões
+                "buttons": [
+                    'pdf', // Botão de exportação para PDF
+                ],
+        language: {
+            "lengthMenu": "_MENU_ Registros por página",
+            "zeroRecords": "Nenhum registro encontrado",
+            "info": "Total de registros: _TOTAL_",
+            "infoEmpty": "Nenhum registro disponível",
+            "infoFiltered": "(Total de registros: _TOTAL_)",
+            "search": "Buscar:",
+            "paginate": {
+                "first": "Primeira",
+                "last": "Última",
+                "next": "Próxima",
+                "previous": "Anterior"
+            }
+        }
+    });
+});
+
+// Funções relacionadas a itens de compra
+  let itens = [];
+
+  document.getElementById("btn-add-item").addEventListener("click", function() {
+    let item        = document.getElementById("item");
+    let qtd         = document.getElementById("quantidade").value;
+    let valor       = document.getElementById("valor_unitario").value;
+    let total       = qtd * valor;
+
+    let obj = {
+      id: item.value,
+      nome: item.options[item.selectedIndex].text,
+      quantidade: qtd,
+      valor_unitario: valor,
+      total: total
+    };
+
+    itens.push(obj);
+    atualizarTabela();
+
+    // fecha modal
+    var modal = bootstrap.Modal.getInstance(document.getElementById('itemModal'));
+    modal.hide();
+  });
+
+  function atualizarTabela() {
+    let tbody = document.querySelector("#tabela-itens tbody");
+    tbody.innerHTML = "";
+    itens.forEach((i, index) => {
+      tbody.innerHTML += `
+        <tr>
+          <td>${i.nome}</td>
+          <td>${i.quantidade}</td>
+          <td>R$ ${i.valor_unitario}</td>
+          <td>R$ ${i.total}</td>
+          <td><button type="button" class="btn btn-danger btn-sm" onclick="removerItem(${index})"><i class="bi bi-trash"></i></button></td>
+        </tr>
+      `;
+    });
+    document.getElementById("itens_json").value = JSON.stringify(itens);
+    document.getElementById("id_valor_total").value = itens.reduce((acc, i) => acc + i.total, 0).toFixed(2).replace('.', ',');
+  }
+
+  function removerItem(index) {
+    itens.splice(index, 1);
+    atualizarTabela();
+  }
+
+    </script>
+</body>
+</html>

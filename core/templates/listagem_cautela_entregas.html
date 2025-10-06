@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+
+{% block title %}Cautelas de Entrega{% endblock %}
+
+{% block content %}
+<div class="content" id="content">
+    <h3 class="mt-4">Cautelas de Entrega</h3>
+
+    <div class="tab-content table-responsive">
+        <div class="tab-pane fade show active">
+            <table id="datatable" class="table table-striped table-bordered">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Locação</th>
+                        <th>Cliente</th>
+                        <th>Produtos</th>
+                        <th>Motorista</th>
+                        <th>Data</th>
+                        <th>Imprimir</th>
+                        <th>Excluir</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for codigo, entregas in cautelas %}
+                        {% with entrega=entregas.0 %}
+                        <tr>
+                            <td>{{ codigo }}</td>
+                            <td>{{ entrega.locacao.id }}</td>
+                            <td>{{ entrega.locacao.cliente }}</td>
+                            <td>
+                                <ul>
+                                    {% for e in entregas %}
+                                        <li>{{ e.produto.descricao }} ({{ e.quantidade }})</li>
+                                    {% endfor %}
+                                </ul>
+                            </td>
+                            <td>{{ entrega.motorista }}</td>
+                            <td>{{ entrega.created_at|date:"d/m/Y H:i" }}</td>
+                            <td>
+                                <a href="{% url 'imprimir_cautela_entrega' entrega.locacao.id %}" target="_blank" 
+                                   class="btn btn-danger btn-sm">
+                                    <i class="bi bi-file-earmark-pdf"></i>
+                                </a>
+                            </td>
+                            <td>
+                            <form action="{% url 'excluir_cautela' codigo %}" method="POST" style="display:inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger"
+                                        onclick="return confirm('Tem certeza que deseja excluir esta cautela?');">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                            </td>
+                        </tr>
+                        {% endwith %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

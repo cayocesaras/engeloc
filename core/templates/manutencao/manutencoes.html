@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+
+{% block title %}Manutenções{% endblock %}
+
+{% block content %}
+<div class="content" id="content">
+  <h3 class="mt-4">Cadastro de Manutenção</h3>
+
+  <form method="POST" name="formulario" action="{% url 'manutencoes' %}">
+    {% csrf_token %}
+    <input type="hidden" name="id" id="manutencao_id" value="{{codigo}}">
+    
+    <div class="row">
+      {% for field in form %}
+      <div class="col-md-4 mb-2 form-floating">
+        {{ field }}
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+      </div>
+      {% endfor %}
+    </div>
+
+    {% if muda_acao == 'alterar' %}
+      <button type="submit" name="Acao" value="alterar" id="btnSalvar" class="btn btn-lointer-salvar">
+        <i class="bi bi-floppy"></i> Salvar
+      </button>
+    {% else %}
+      <button type="submit" name="Acao" value="incluir" id="btnSalvar" class="btn btn-lointer-salvar">
+        <i class="bi bi-floppy"></i> Salvar
+      </button>
+    {% endif %}
+    
+    <a class="btn btn-secondary" href="{% url 'manutencoes' %}" role="button">
+      <i class="bi bi-floppy"></i> Limpar
+    </a>
+  </form>
+
+  {% if manutencao_etapas %}
+    <div class="mt-4">
+      <h5>Etapas da Manutenção</h5>
+      <ul class="list-group">
+        {% for etapa in manutencao_etapas %}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+          {{ etapa.etapa.nome }} - Prevista: {{ etapa.data_prevista|date:"d/m/Y" }}
+          <span class="badge bg-primary">{{ etapa.etapa.ordem }}ª etapa</span>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

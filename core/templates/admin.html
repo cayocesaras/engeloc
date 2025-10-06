@@ -1,0 +1,45 @@
+{% extends "base.html" %} 
+{% block title %}Criar Novo Papel e Permissões{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2>Criar Novo Papel (Grupo)</h2>
+    <hr>
+    
+    <form method="post" action="{% url 'criar_grupo_e_permissoes' %}">
+        {% csrf_token %}
+        
+        <div class="mb-3">
+            <label for="id_name" class="form-label">Nome do Papel (Grupo):</label>
+            {{ form.name }} {% if form.name.errors %}
+                <div class="text-danger">{{ form.name.errors }}</div>
+            {% endif %}
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Permissões a Atribuir:</label>
+            <div class="list-group" style="max-height: 400px; overflow-y: auto;">
+                
+                {% for permission in available_permissions %}
+                    <label class="list-group-item">
+                        <input class="form-check-input me-1" 
+                               type="checkbox" 
+                               name="permissions" 
+                               value="{{ permission.id }}">
+                        
+                        <span class="fw-bold">{{ permission.content_type.app_label }} | </span>
+                        <span>{{ permission.content_type.model }} | </span>
+                        <span class="text-primary">{{ permission.name }}</span>
+                        
+                    </label>
+                {% endfor %}
+
+            </div>
+            <small class="form-text text-muted">Selecione todas as funções que este papel deve ter.</small>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Criar Papel</button>
+        
+    </form>
+</div>
+{% endblock %}

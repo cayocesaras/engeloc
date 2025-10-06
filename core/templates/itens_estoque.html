@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content" id="content">
+  <h3 class="mt-4">Itens do Estoque</h3>
+  <form method="POST" action="{% url 'salvar_itens_estoque_em_massa' %}">
+    {% csrf_token %}
+    <table id="datatable" class="table table-striped table-bordered">
+      <thead>
+        <tr>
+          <th>Código</th>
+          <th>Produto</th>
+          <th>Número de Série</th>
+          <th>Status</th>
+          <th>Data do Status</th>
+          <th>Observações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in itens %}
+        <tr>
+          <td>{{ item.codigo }}</td>
+          <td>{{ item.produto.descricao }}</td>
+          <td>
+            <input type="text" name="numero_serie_{{ item.id }}" 
+                   value="{{ item.numero_serie|default_if_none:'' }}" 
+                   class="form-control">
+          </td>
+          <td>{{item.status}}</td>
+          <td>{{ item.data_ultimo_status|date:"d/m/Y H:i" }}</td>
+          <td>
+            <textarea name="observacoes_{{ item.id }}" class="form-control" rows="1">{{ item.observacoes }}</textarea>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <!-- Campos ocultos para saber quais IDs vieram -->
+    {% for item in itens %}
+      <input type="hidden" name="item_ids" value="{{ item.id }}">
+    {% endfor %}
+
+    <button type="submit" class="btn btn-lointer-salvar">
+      <i class="bi bi-floppy"></i> Salvar Tudo
+    </button>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,173 @@
+{% extends 'base.html' %}
+
+{% block title %}Devolução{% endblock %}
+
+{% block actionMenu %}
+{% endblock %}
+
+{% block content %}
+<div class="content">
+  <h3>Devolução - Locação {{ locacao.codigo }}</h3>
+
+  <form method="POST" id="form-devolucao">
+    {% csrf_token %}
+
+    <div class="row">
+      {% for field in form %}
+      <div class="col-md-4 mb-2 form-floating">
+        {{ field }}
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+      </div>
+      {% endfor %}
+    </div>
+
+    <hr>
+
+    <!-- Botão para abrir modal -->
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#itemModal">
+      <i class="bi bi-plus-circle"></i> Adicionar Item para Devolução
+    </button>
+
+    <br><br>
+
+    <!-- Tabela de itens -->
+    <div class="table-responsive">
+      <table id="tabela-itens" class="table table-striped table-bordered">
+        <thead>
+          <tr>
+            <th>Produto</th>
+            <th>Qtd Locada</th>
+            <th>Saldo</th>
+            <th>Qtd Devolver</th>
+            <th>Estado</th>
+            <th>Observações</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <!-- Campo escondido -->
+    <input type="hidden" name="itens_json" id="itens_json">
+
+    <button type="submit" class="btn btn-success"><i class="bi bi-floppy"></i> Confirmar Devolução</button>
+  </form>
+</div>
+
+<!-- Modal de adicionar item -->
+<div class="modal fade" id="itemModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Adicionar Item</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label>Item</label>
+          <select id="item" class="form-control">
+            {% for i in itens_locacao %}
+              <option value="{{ i.id }}" data-produto="{{ i.produto.descricao }}" data-qtd="{{ i.quantidade }}" data-saldo="{{ i.saldo }}" onchange="atualizarMaxQtd()">
+                {{ i.produto.descricao }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="mb-3">
+          <label>Quantidade</label>
+          <input type="number" id="quantidade" class="form-control" min="1">
+        </div>
+        <div class="mb-3">
+          <label>Estado</label>
+          <select id="estado" class="form-control">
+            <option value="bom">Bom</option>
+            <option value="danificado">Danificado</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label>Custo Adicional R$</label>
+          <input type="text" name="custo" class="form-control" data-mask="money">
+        </div>
+        <div class="mb-3">
+          <label>Observações</label>
+          <textarea id="observacoes" class="form-control"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="btn-add-item">Adicionar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let itens = [];
+
+document.getElementById("btn-add-item").addEventListener("click", function() {
+  const select = document.getElementById("item");
+  const itemId = select.value;
+  const produto = select.options[select.selectedIndex].dataset.produto;
+  const qtdLocada = select.options[select.selectedIndex].dataset.qtd;
+  const saldo = select.options[select.selectedIndex].dataset.saldo;
+  const quantidade = document.getElementById("quantidade").value;
+  const estado = document.getElementById("estado").value;
+  const observacoes = document.getElementById("observacoes").value;
+
+  if (quantidade <= 0) {
+    alert("Quantidade inválida!");
+    return;
+  }
+
+  const item = {
+    item_locacao_id: itemId,
+    produto: produto,
+    quantidade: quantidade,
+    estado: estado,
+    observacoes: observacoes,
+    qtd_locada: qtdLocada,
+    saldo: saldo
+  };
+
+  itens.push(item);
+  atualizarTabela();
+  document.getElementById("itens_json").value = JSON.stringify(itens);
+
+  // fecha modal
+  var modal = bootstrap.Modal.getInstance(document.getElementById('itemModal'));
+  modal.hide();
+});
+
+function atualizarTabela() {
+  const tbody = document.querySelector("#tabela-itens tbody");
+  tbody.innerHTML = "";
+  itens.forEach((i, index) => {
+    tbody.innerHTML += `
+      <tr>
+        <td>${i.produto}</td>
+        <td>${i.qtd_locada}</td>
+        <td>${i.saldo}</td>
+        <td>${i.quantidade}</td>
+        <td>${i.estado}</td>
+        <td>${i.observacoes}</td>
+        <td><button type="button" class="btn btn-danger btn-sm" onclick="removerItem(${index})">Remover</button></td>
+      </tr>
+    `;
+  });
+}
+
+function removerItem(index) {
+  itens.splice(index, 1);
+  atualizarTabela();
+  document.getElementById("itens_json").value = JSON.stringify(itens);
+}
+
+function atualizarMaxQtd() {
+  const select = document.getElementById("item");
+  const saldo = select.options[select.selectedIndex].dataset.saldo;
+  document.getElementById("quantidade").max = saldo;
+  document.getElementById("quantidade").value = 1;
+}
+</script>
+{% endblock %}

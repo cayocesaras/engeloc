@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% block title %}Etapas da Manutenção{% endblock %}
+
+{% block content %}
+<div class="content" id="content">
+    <h3 class="mt-4">Cadastro de Etapas da Manutenção</h3>
+    <form method="POST" action="{% url 'etapas_manutencao' %}">
+        {% csrf_token %}
+        <input type="hidden" name="id" value="{{codigo}}">
+        <div class="row">
+            {% for field in form %}
+                <div class="col-md-4 mb-2 form-floating">
+                    {{ field }}
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                </div>
+            {% endfor %}
+        </div>
+
+        {% if muda_acao == 'alterar' %}
+            <button type="submit" name="Acao" value="alterar" class="btn btn-lointer-salvar">
+                <i class="bi bi-floppy"></i> Salvar
+            </button>
+        {% else %}
+            <button type="submit" name="Acao" value="incluir" class="btn btn-lointer-salvar">
+                <i class="bi bi-plus-circle"></i> Incluir
+            </button>
+        {% endif %}
+        <a class="btn btn-secondary" href="{% url 'etapas_manutencao' %}"><i class="bi bi-arrow-clockwise"></i> Limpar</a>
+    </form><br>
+
+    <table id="datatable" class="table table-striped table-bordered">
+        <thead>
+            <tr>
+                <th>Fluxo</th>
+                <th>Nome</th>
+                <th>Ordem</th>
+                <th>Prazo (dias)</th>
+                <th>Visualizar</th>
+                <th>Editar</th>
+                <th>Excluir</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for etapa in etapas %}
+            <tr>
+                <td>{{ etapa.fluxo }}</td>
+                <td>{{ etapa.nome }}</td>
+                <td>{{ etapa.ordem }}</td>
+                <td>{{ etapa.prazo_dias }}</td>
+                <td>
+                    <form method="POST" action="{% url 'etapas_manutencao' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="id" value="{{ etapa.id }}">
+                        <button type="submit" name="Acao" value="visualizar" class="btn btn-info btn-sm">
+                            <i class="bi bi-file-earmark-text"></i>
+                        </button>
+                    </form>
+                </td>
+                <td>
+                    <form method="POST" action="{% url 'etapas_manutencao' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="id" value="{{ etapa.id }}">
+                        <button type="submit" name="Acao" value="alterar_form" class="btn btn-warning btn-sm">
+                            <i class="bi bi-pencil-square"></i>
+                        </button>
+                    </form>
+                </td>
+                <td>
+                    <form method="POST" action="{% url 'etapas_manutencao' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="id" value="{{ etapa.id }}">
+                        <button type="submit" name="Acao" value="excluir" class="btn btn-danger btn-sm"
+                                onclick="return confirm('Deseja excluir esta etapa?');">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
