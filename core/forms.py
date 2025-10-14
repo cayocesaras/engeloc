@@ -537,6 +537,11 @@ class FluxoManutencaoForm(forms.ModelForm):
         }
 
 class ManutencaoForm(forms.ModelForm):
+    id  = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'O.S.', 'readonly': 'readonly', 'id': 'id_id'}),
+        label='O.S.'
+    )
     fluxo = forms.ModelChoiceField(
         queryset=FluxoManutencao.objects.filter(),
         widget=forms.Select(attrs={'class': 'form-control produto-select', 'id': 'id_fluxo'}),
@@ -558,6 +563,9 @@ class ManutencaoForm(forms.ModelForm):
             'produto': forms.Select(attrs={'class': 'form-control'}),
             'observacoes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         }
+    
+    def clean_id(self):
+        return None 
 
 class EtapaManutencaoForm(forms.ModelForm):
     fluxo = forms.ModelChoiceField(
@@ -577,13 +585,60 @@ class EtapaManutencaoForm(forms.ModelForm):
 
 ############################## FINANCERO #####################################
 from .models import ContaCobranca
+from .models import CondicaoCobranca
+from .models import InstrucaoCobranca
 
 class ContaCobrancaForm(forms.ModelForm):
     class Meta:
         model = ContaCobranca
         fields = ['banco', 'numero', 'digito', 'convenio', 'carteira']
+        labels = {
+            'numero':   'Número da Conta',
+            'digito':   'Dígito',
+            'convenio': 'Convênio',
+        }
         widgets = {
-            'nome': forms.TextInput(attrs={'class': 'form-control'}),
+            'banco':    forms.Select(attrs={'class': 'form-control'}),
+            'numero':   forms.TextInput(attrs={'class': 'form-control'}),
+            'digito':   forms.TextInput(attrs={'class': 'form-control'}),
+            'convenio': forms.TextInput(attrs={'class': 'form-control'}),
+            'carteira': forms.TextInput(attrs={'class': 'form-control'}),
+        }
+
+class CondicaoCobrancaForm(forms.ModelForm):
+    class Meta:
+        model = CondicaoCobranca
+        fields = ['codigo', 'vencimento_dias','juros','multa']
+        labels = {
+            'codigo':           'Código',
+            'vencimento_dias':  'Dias para Vencimento',
+            'juros':            '% Juros',
+            'multa':            '% Multa'
+        }
+        widgets = {
+            'codigo':           forms.TextInput(attrs={'class': 'form-control'}),
+            'vencimento_dias':  forms.NumberInput(attrs={'class': 'form-control', 'min':0}),
+            'juros':            forms.NumberInput(attrs={'class': 'form-control', 'min':0}),
+            'multa':            forms.NumberInput(attrs={'class': 'form-control', 'min':0}),
+        }
+
+class InstrucaoCobrancaForm(forms.ModelForm):
+    class Meta:
+        model = InstrucaoCobranca
+        fields = ['codigo','mensagem1','mensagem2','mensagem3','local_pagamento']
+        labels = {
+            'codigo':           'Código',
+            'mensagem1':        'Mensagem Cobrança 1',
+            'mensagem2':        'Mensagem Cobrança 2',
+            'mensagem3':        'Mensagem Cobrança 3',
+            'local_pagamento':  'Local de Pagamento'
+        }
+        widgets = {
+            'codigo':           forms.TextInput(attrs={'class': 'form-control'}),
+            'mensagem1':        forms.TextInput(attrs={'class': 'form-control', 'maxlength': 200}),
+            'mensagem2':        forms.TextInput(attrs={'class': 'form-control', 'maxlength': 200}),
+            'mensagem3':        forms.TextInput(attrs={'class': 'form-control', 'maxlength': 200}),
+            'local_pagamento':  forms.TextInput(attrs={'class': 'form-control', 'maxlength': 200}),
         }
 
 ############################# DEVOLUCAO #####################################

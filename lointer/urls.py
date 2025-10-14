@@ -64,6 +64,7 @@ urlpatterns = [
     path('locacao/<int:locacao_id>',views.imprimir_espelho, name='imprimir_espelho'),
     path('cotacao_locacao/<int:locacao_id>',views.cotacao_locacao, name='cotacao_locacao'),
     path('locacao/<int:locacao_id>/enviar-assinatura/',views.enviar_contrato_para_assinatura,name='enviar_assinatura'),
+    path('contrato/<int:locacao_id>',views.imprimir_contrato, name='imprimir_contrato'),
     path('entrega_locacao', views.entrega_locacao, name="entrega_locacao"),
     path('listagem_cautela_entregas', views.listagem_cautela_entregas, name="listagem_cautela_entregas"),
     path('listagem_cautela_devolucoes', views.listagem_cautela_devolucoes, name="listagem_cautela_devolucoes"),

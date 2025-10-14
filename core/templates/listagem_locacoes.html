@@ -22,7 +22,7 @@
                         <th>Espelho</th>
                         <th>Entrega</th>
                         <th>Devolução</th>
-                        <!--<th>Assinatura</th>-->
+                        <th>Contrato</th>
                         <th>Boleto</th>
                     </tr>
                 </thead>
@@ -51,6 +51,11 @@
                         </td>
                         <td>
                             <a href="{% url 'cad_devolucao' locacao.id %}" class="btn btn-primary btn-sm">
+                                <i class="bi bi-arrow-down-square-fill"></i>
+                            </a>
+                        </td>
+                        <td>
+                            <a href="{% url 'imprimir_contrato' locacao.id %}" class="btn btn-primary btn-sm">
                                 <i class="bi bi-arrow-down-square-fill"></i>
                             </a>
                         </td>
