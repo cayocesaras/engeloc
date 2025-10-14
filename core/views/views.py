@@ -1542,6 +1542,10 @@ def manutencoes(request):
     codigo              = ""
     manutencao_etapas   = []
 
+    # Pegar a próxima numeração de OS
+    max_id = Manutencao.objects.all().aggregate(Max('id'))['id__max']
+    proximo_id = (max_id or 0) + 1
+
     if request.method == 'POST':
         acao        = request.POST.get("Acao")
         codigo      = request.POST.get('id')
@@ -1616,7 +1620,7 @@ def manutencoes(request):
 
     else:
         form = ManutencaoForm(initial={
-            'codigo': f"MAN-{timezone.now().strftime('%Y%m%d%H%M')}",
+            'id': proximo_id,
         })
 
     context = {
@@ -1624,7 +1628,8 @@ def manutencoes(request):
         'manutencoes': manutencoes,
         'muda_acao': muda_acao,
         'codigo': codigo,
-        'manutencao_etapas': manutencao_etapas
+        'manutencao_etapas': manutencao_etapas,
+        'proximo_id_visual': proximo_id
     }
     return render(request, 'manutencao/manutencoes.html', context)
 
