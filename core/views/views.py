@@ -1533,6 +1533,7 @@ from django.utils import timezone
 from datetime import date
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.http import require_POST
+from django.db.models import Max
 
 @login_required(login_url='login')
 def manutencoes(request):

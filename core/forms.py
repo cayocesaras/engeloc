@@ -558,7 +558,7 @@ class ManutencaoForm(forms.ModelForm):
     )
     class Meta:
         model = Manutencao
-        fields = ['fluxo', 'produto', 'data_inicio', 'observacoes']
+        fields = ['id','fluxo', 'produto', 'data_inicio', 'observacoes']
         widgets = {
             'produto': forms.Select(attrs={'class': 'form-control'}),
             'observacoes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
