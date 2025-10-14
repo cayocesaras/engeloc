@@ -477,11 +477,17 @@ class Manutencao(models.Model):
         ('pendente', 'Pendente'),
         ('aprovado', 'Aprovado'),
     ]
+    TIPO_CHOICES = [
+        ('preventiva', 'Preventiva'),
+        ('corretiva', 'Corretiva'),
+        ('outros', 'Outros'),
+    ]
     produto     = models.ForeignKey('ItensEstoque', on_delete=models.CASCADE)
     fluxo       = models.ForeignKey(FluxoManutencao, on_delete=models.CASCADE)
     data_inicio = models.DateField(default=timezone.now)
     observacoes = models.TextField(blank=True)
     status      = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pendente')
+    tipo        = models.CharField(max_length=20, choices=TIPO_CHOICES, default='preventiva')
 
     class Meta:
         db_table            = 'manutencoes'

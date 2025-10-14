@@ -556,9 +556,14 @@ class ManutencaoForm(forms.ModelForm):
         widget=forms.Select(attrs={'class': 'form-control produto-select', 'id': 'id_fluxo'}),
         empty_label="Selecione o produto"
     )
+    tipo = forms.ChoiceField(
+        required=True,
+        choices=[('preventiva', 'Preventiva'),('corretiva', 'Corretiva'),('outros', 'Outros')],
+        widget=forms.Select(attrs={'class': 'form-control', 'id': 'id_tipo'})
+    )
     class Meta:
         model = Manutencao
-        fields = ['id','fluxo', 'produto', 'data_inicio', 'observacoes']
+        fields = ['id','fluxo', 'produto', 'data_inicio', 'observacoes','tipo']
         widgets = {
             'produto': forms.Select(attrs={'class': 'form-control'}),
             'observacoes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
