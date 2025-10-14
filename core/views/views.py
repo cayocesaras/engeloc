@@ -1253,6 +1253,167 @@ def saldo_estoque_produto_item(request):
 
 ############################# FINANCEIRO ################################
 @login_required(login_url='login')
+def cad_conta_cobranca(request):
+    conta               = ContaCobranca.objects.all()
+    form                = ContaCobrancaForm()
+
+    if request.method == 'POST':
+        form = ContaCobrancaForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('cad_conta_cobranca')
+
+    context = {
+        'form': form,
+        'contas': conta,
+    }
+    return render(request, 'financeiro/conta_cobranca.html', context)
+
+@login_required(login_url='login')
+def alterar_conta_cobranca(request, conta_id):
+    contas            = ContaCobranca.objects.all()
+    try:
+        conta         = ContaCobranca.objects.get(id=conta_id)
+        form          = ContaCobrancaForm(instance=conta)
+    except ContaCobranca.DoesNotExist:
+        form.add_error(None, 'Conta não encontrada para alteração.')
+    
+    if request.method == 'POST':
+            form = ContaCobrancaForm(request.POST, instance=conta)
+            if form.is_valid():
+                form.save()
+                messages.success(request, 'Conta de cobrança alterada com sucesso!')
+                return redirect('cad_conta_cobranca')
+            else:
+                messages.error(request, 'Erro ao alterar a conta. Verifique os campos.')
+    else:
+        form = ContaCobrancaForm(instance=conta)
+
+    context = {
+        'form': form,
+        'contas': contas,
+        'id': conta.id,
+    }
+    return render(request, 'financeiro/conta_cobranca.html', context)
+
+def excluir_conta_cobranca(request, conta_id):
+    try:
+        conta = ContaCobranca.objects.get(id=conta_id)
+        conta.delete()
+        messages.success(request, 'Conta de cobrança excluída com sucesso.')
+    except ContaCobranca.DoesNotExist:
+        messages.error(request, 'Conta de cobrança não encontrada.')
+
+    return redirect('cad_conta_cobranca')
+
+@login_required(login_url='login')
+def cad_condicao_cobranca(request):
+    condicoes           = CondicaoCobranca.objects.all()
+    form                = CondicaoCobrancaForm()
+
+    if request.method == 'POST':
+        form = CondicaoCobrancaForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('cad_condicao_cobranca')
+
+    context = {
+        'form': form,
+        'condicoes': condicoes,
+    }
+    return render(request, 'financeiro/condicao_cobranca.html', context)
+
+@login_required(login_url='login')
+def alterar_condicao_cobranca(request, condicao_id):
+    condicoes            = CondicaoCobranca.objects.all()
+    try:
+        condicao      = CondicaoCobranca.objects.get(id=condicao_id)
+        form          = CondicaoCobrancaForm(instance=condicao)
+    except CondicaoCobranca.DoesNotExist:
+        form.add_error(None, 'Condição não encontrada para alteração.')
+    
+    if request.method == 'POST':
+            form = CondicaoCobrancaForm(request.POST, instance=condicao)
+            if form.is_valid():
+                form.save()
+                messages.success(request, 'Condição de cobrança alterada com sucesso!')
+                return redirect('cad_condicao_cobranca')
+            else:
+                messages.error(request, 'Erro ao alterar a condição. Verifique os campos.')
+    else:
+        form = CondicaoCobrancaForm(instance=condicao)
+
+    context = {
+        'form': form,
+        'condicoes': condicoes,
+        'id': condicao.id,
+    }
+    return render(request, 'financeiro/condicao_cobranca.html', context)
+
+def excluir_condicao_cobranca(request, condicao_id):
+    try:
+        condicao = CondicaoCobranca.objects.get(id=condicao_id)
+        condicao.delete()
+        messages.success(request, 'Condição de cobrança excluída com sucesso.')
+    except CondicaoCobranca.DoesNotExist:
+        messages.error(request, 'Condição de cobrança não encontrada.')
+
+    return redirect('cad_condicao_cobranca')
+
+@login_required(login_url='login')
+def cad_instrucao_cobranca(request):
+    instrucoes          = InstrucaoCobranca.objects.all()
+    form                = InstrucaoCobrancaForm()
+
+    if request.method == 'POST':
+        form = InstrucaoCobrancaForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('cad_instrucao_cobranca')
+
+    context = {
+        'form': form,
+        'instrucoes': instrucoes,
+    }
+    return render(request, 'financeiro/instrucao_cobranca.html', context)
+
+@login_required(login_url='login')
+def alterar_instrucao_cobranca(request, instrucao_id):
+    instrucoes        = InstrucaoCobranca.objects.all()
+    try:
+        instrucao     = InstrucaoCobranca.objects.get(id=instrucao_id)
+        form          = InstrucaoCobrancaForm(instance=instrucao)
+    except InstrucaoCobranca.DoesNotExist:
+        form.add_error(None, 'Instrução não encontrada para alteração.')
+    
+    if request.method == 'POST':
+            form = InstrucaoCobrancaForm(request.POST, instance=instrucao)
+            if form.is_valid():
+                form.save()
+                messages.success(request, 'Instrução de cobrança alterada com sucesso!')
+                return redirect('cad_instrucao_cobranca')
+            else:
+                messages.error(request, 'Erro ao alterar a condição. Verifique os campos.')
+    else:
+        form = InstrucaoCobrancaForm(instance=instrucao)
+
+    context = {
+        'form': form,
+        'instrucoes': instrucoes,
+        'id': instrucao.id,
+    }
+    return render(request, 'financeiro/instrucao_cobranca.html', context)
+
+def excluir_instrucao_cobranca(request, instrucao_id):
+    try:
+        condicao = InstrucaoCobranca.objects.get(id=instrucao_id)
+        condicao.delete()
+        messages.success(request, 'Instrução de cobrança excluída com sucesso.')
+    except InstrucaoCobranca.DoesNotExist:
+        messages.error(request, 'Instrução de cobrança não encontrada.')
+
+    return redirect('cad_instrucao_cobranca')
+@login_required(login_url='login')
 def gerar_conta_a_receber(request, locacao_id):
     locacao = Locacao.objects.get(pk=locacao_id)
 

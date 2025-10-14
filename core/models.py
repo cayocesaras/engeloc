@@ -366,6 +366,7 @@ class InstrucaoCobranca(models.Model):
     mensagem1       = models.CharField(max_length=200)
     mensagem2       = models.CharField(max_length=200)
     mensagem3       = models.CharField(max_length=200)
+    local_pagamento = models.CharField(max_length=200, default = '')
 
     class Meta:
         db_table            = 'instrucao_cobranca'

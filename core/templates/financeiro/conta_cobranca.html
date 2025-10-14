@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block title %}Cadastro da Conta - Banco{% endblock %}
+
+{% block content %}
+<div class="content" id="content">
+    <h3 class="mt-4">Cadastro de Conta - Banco</h3>
+    <form method="POST" action="{% if id %}{% url 'alterar_conta_cobranca' id %}{% else %}{% url 'cad_conta_cobranca' %}{% endif %}">
+        {% csrf_token %}
+        <div class="row">
+            {% for field in form %}
+                <div class="col-md-4 mb-2 form-floating">
+                    {{ field }}
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                </div>
+            {% endfor %}
+        </div>
+            <button type="submit" class="btn btn-lointer-salvar">
+                {% if id %}
+                    <i class="bi bi-save"></i> Atualizar
+                {% else %}
+                    <i class="bi bi-floppy"></i> Salvar
+                {% endif %}
+            </button>
+        <a class="btn btn-secondary" href="{% url 'cad_conta_cobranca' %}"><i class="bi bi-arrow-clockwise"></i> Limpar</a>
+    </form><br>
+
+    <table id="datatable" class="table table-striped table-bordered">
+        <thead>
+            <tr>
+                <th>Banco</th>
+                <th>Conta</th>
+                <th>Dígito</th>
+                <th>Convênio</th>
+                <th>Carteira</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for conta in contas %}
+            <tr>
+                <td>{{ conta.banco }}</td>
+                <td>{{ conta.numero }}</td>
+                <td>{{ conta.digito }}</td>
+                <td>{{ conta.convenio }}</td>
+                <td>{{ conta.carteira }}</td>
+                <td>
+                    <div class="dropdown">
+                    <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        Ações
+                    </button>
+                    <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                        <a class="dropdown-item" href="{% url 'alterar_conta_cobranca' conta.id %}"><i class="bi bi-pencil-square"></i> Alterar</a>
+                        <a class="dropdown-item" href="{% url 'excluir_conta_cobranca' conta.id %}" onclick="return confirm('Tem certeza que deseja excluir esta Conta de Cobrança?');"><i class="bi bi-truck"></i> Excluir</a>
+                    </div>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

@@ -351,8 +351,6 @@
                     <ul class="dropdown-menu" aria-labelledby="navbarDropdownCadastro">
                         <li><a class="dropdown-item" href="{% url 'fluxo_manutencao' %}">Cadastrar fluxo/processo</a></li>
                         <li><a class="dropdown-item" href="{% url 'etapas_manutencao' %}">Cadastrar etapa do processo</a></li>
-                        <!--<li><hr class="dropdown-divider"></li>-->
-                        <li><a class="dropdown-item" href="{% url 'manutencoes' %}">Cadastrar manutenção</a></li>
                     </ul>
                     </li>
                     <li class="nav-item dropdown dropend">
@@ -360,12 +358,11 @@
                         Gestão de Manutenção
                     </a>
                     <ul class="dropdown-menu" aria-labelledby="navbarDropdownCadastro">
-                        <li><a class="dropdown-item" href="#">Abrir O.S. de manutenção</a></li>
+                        <li><a class="dropdown-item" href="{% url 'manutencoes' %}">Gerar O.S.</a></li>
                         <li><a class="dropdown-item" href="{% url 'listagem_manutencao' %}">Listar todas as O.S.</a></li>
-                        <!--<li><hr class="dropdown-divider"></li>-->
                         <li><a class="dropdown-item" href="{% url 'aprovar_manutencoes' %}">Aprovar O.S. de manutenção</a></li>
                         <li><a class="dropdown-item" href="{% url 'grade_manutencoes' %}">Grade de manutenção</a></li>
-                        <li><a class="dropdown-item" href="#">Produto do dia</a></li>
+                        <!--<li><a class="dropdown-item" href="#">Produto do dia</a></li>-->
                     </ul>
                     </li>
                 </ul>
@@ -381,13 +378,9 @@
                         Cadastro
                     </a>
                     <ul class="dropdown-menu" aria-labelledby="navbarDropdownCadastro">
-                        <li><a class="dropdown-item" href="#">Conta</a></li>
-                    </ul>
-                    <ul class="dropdown-menu" aria-labelledby="navbarDropdownCadastro">
-                        <li><a class="dropdown-item" href="#">Condição de Pagamento</a></li>
-                    </ul>
-                    <ul class="dropdown-menu" aria-labelledby="navbarDropdownCadastro">
-                        <li><a class="dropdown-item" href="#">Instruções de Cobrança</a></li>
+                        <li><a class="dropdown-item" href="{% url 'cad_conta_cobranca' %}">Conta</a></li>
+                        <li><a class="dropdown-item" href="{% url 'cad_condicao_cobranca' %}">Condição de Cobrança</a></li>
+                        <li><a class="dropdown-item" href="{% url 'cad_instrucao_cobranca' %}">Instruções de Cobrança</a></li>
                     </ul>
                     </li>
                     <li class="nav-item dropdown dropend">
@@ -413,6 +406,13 @@
                 <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownSuprimentos" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                     Sistema
                 </a>
+                <ul class="dropdown-menu" aria-labelledby="navbarDropdownSuprimentos">
+                    <li class="nav-item dropdown">
+                    <a class="dropdown-item" href="{% url 'criar_grupo_e_permissoes' %}" id="navbarDropdownCadastro" role="button">
+                        Perfis e Permissões
+                    </a>
+                    </li>
+                </ul>
                 <ul class="dropdown-menu" aria-labelledby="navbarDropdownSuprimentos">
                     <li class="nav-item dropdown">
                     <a class="dropdown-item" href="{% url 'logout' %}" id="navbarDropdownCadastro" role="button">
