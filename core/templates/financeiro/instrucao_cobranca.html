@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block title %}Cadastro da Instrução de Cobrança{% endblock %}
+
+{% block content %}
+<div class="content" id="content">
+    <h3 class="mt-4">Cadastro da Instrução de Cobrança</h3>
+    <form method="POST" action="{% if id %}{% url 'alterar_instrucao_cobranca' id %}{% else %}{% url 'cad_instrucao_cobranca' %}{% endif %}">
+        {% csrf_token %}
+        <div class="row">
+            {% for field in form %}
+                <div class="col-md-4 mb-2 form-floating">
+                    {{ field }}
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                </div>
+            {% endfor %}
+        </div>
+            <button type="submit" class="btn btn-lointer-salvar">
+                {% if id %}
+                    <i class="bi bi-save"></i> Atualizar
+                {% else %}
+                    <i class="bi bi-floppy"></i> Salvar
+                {% endif %}
+            </button>
+        <a class="btn btn-secondary" href="{% url 'cad_instrucao_cobranca' %}"><i class="bi bi-arrow-clockwise"></i> Limpar</a>
+    </form><br>
+
+    <table id="datatable" class="table table-striped table-bordered">
+        <thead>
+            <tr>
+                <th>Código</th>
+                <th>Mensagem de Cobrança 1</th>
+                <th>Mensagem de Cobrança 2</th>
+                <th>Mensagem de Cobrança 3</th>
+                <th>Local para Pagamento</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for instrucao in instrucoes %}
+            <tr>
+                <td>{{ instrucao.codigo }}</td>
+                <td>{{ instrucao.mensagem1 }}</td>
+                <td>{{ instrucao.mensagem2 }}</td>
+                <td>{{ instrucao.mensagem3 }}</td>
+                <td>{{ instrucao.local_pagamento }}</td>
+                <td>
+                    <div class="dropdown">
+                    <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        Ações
+                    </button>
+                    <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                        <a class="dropdown-item" href="{% url 'alterar_instrucao_cobranca' instrucao.id %}"><i class="bi bi-pencil-square"></i> Alterar</a>
+                        <a class="dropdown-item" href="{% url 'excluir_instrucao_cobranca' instrucao.id %}" onclick="return confirm('Tem certeza que deseja excluir esta Instrução de Cobrança?');"><i class="bi bi-truck"></i> Excluir</a>
+                    </div>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
