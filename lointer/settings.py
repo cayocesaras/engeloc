@@ -86,10 +86,14 @@ WSGI_APPLICATION = 'lointer.wsgi.application'
 # Database
 # settings.py
 DATABASES = {
-   'default': {
-       'ENGINE': 'django.db.backends.sqlite3',
-       'NAME': BASE_DIR / 'db.sqlite3',
-   }
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.getenv("DATABASE_NAME"),
+        'USER': os.getenv("DATABASE_USER"),
+        'PASSWORD': os.getenv("DATABASE_PASSWORD"),
+        'HOST': os.getenv("DATABASE_URL"),
+        'PORT': '5432',
+    }
 }
 
 # Password validation
