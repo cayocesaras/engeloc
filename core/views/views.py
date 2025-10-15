@@ -82,7 +82,12 @@ def list_empresas(request):
 @login_required(login_url='login')
 def listagem_locacoes(request):
     locacoes  = Locacao.objects.filter(status = 'aprovada')
-    return render(request, 'listagem_locacoes.html', {'locacoes': locacoes})  
+    return render(request, 'listagem_locacoes.html', {'locacoes': locacoes})
+
+@login_required(login_url='login')
+def listagem_clientes(request):
+    clientes  = CadCliente.objects.all()
+    return render(request, 'listagem_clientes.html', {'clientes': clientes})    
 
 @login_required(login_url='login')
 def cad_empresa(request):

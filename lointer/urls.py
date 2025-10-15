@@ -31,6 +31,7 @@ urlpatterns = [
     path('buscar-empresa/', views.buscar_empresa, name='buscar_empresa'),
     path('empresas/', views.cad_empresa, name='empresas'),
     path('clientes/', views.cad_cliente, name='clientes'),
+    path("listagem_clientes/", views.listagem_clientes, name="listagem_clientes"),
     path('fornecedores/', views.cad_fornecedor, name='fornecedores'),
     path('grupo_produtos/', views.cad_grupo_produto, name='grupo_produtos'),
     path('unidade_medida/', views.cad_unidade_medida, name='unidade_medida'),
