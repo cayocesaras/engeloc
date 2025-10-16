@@ -282,6 +282,22 @@ class ItensLocacao(models.Model):
         ).aggregate(total=models.Sum('quantidade'))['total'] or 0
         return self.quantidade - entregues
 
+    def saldo_disponivel_devolucao(self):
+        """
+        Calcula o saldo disponível para devolução:
+        Quantidade Entregue - Quantidade Já Devolvida
+        """
+        # Quantidade entregue
+        entregues = EntregaLocacao.objects.filter(
+            locacao=self.locacao, produto=self.produto
+        ).aggregate(total=models.Sum('quantidade'))['total'] or 0
+
+        # Quantidade já devolvida
+        devolvidas = ItemDevolucao.objects.filter(
+            item_locacao=self
+        ).aggregate(total=models.Sum('quantidade'))['total'] or 0
+
+        return entregues - devolvidas
     class Meta:
         db_table            = 'itens_locacao'
         verbose_name        = 'Cadastro de Item de Locação'

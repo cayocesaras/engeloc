@@ -1435,6 +1435,32 @@ def gerar_conta_a_receber(request, locacao_id):
     )
     return redirect('titulos_a_receber')
 
+
+@login_required(login_url='login')
+def gerar_conta_a_receber_devolucao(request, locacao_id, devolucao_id):
+    locacao = Locacao.objects.get(pk=locacao_id)
+    devolucao = Devolucao.objects.get(pk=devolucao_id, locacao=locacao)
+
+    # Calcula o total do custo adicional de todos os produtos da devolução
+    total_custo_adicional = devolucao.itens.aggregate(
+        total=models.Sum('custo_adicional')
+    )['total'] or 0
+
+    # Cria o objeto ContasReceber
+    conta_receber = ContasReceber.objects.create(
+        cliente=locacao.cliente,
+        locacao=locacao,
+        descricao=f"Devolução referente à locação {locacao.codigo}",
+        valor_total=total_custo_adicional,
+        data_emissao=timezone.now().date(),
+        data_vencimento=timezone.now().date() + timezone.timedelta(days=30),  # 30 dias para vencimento
+        status='aberto',
+        forma_pagamento='boleto'
+    )
+
+    messages.success(request, f"Conta a receber criada com sucesso! Valor: R$ {total_custo_adicional:.2f}")
+    return redirect('titulos_a_receber')
+
 @login_required(login_url='login')
 def titulos_a_receber(request):
     titulos = ContasReceber.objects.select_related('cliente', 'locacao').order_by('-data_emissao')

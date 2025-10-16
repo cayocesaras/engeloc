@@ -40,6 +40,7 @@
             <th>Saldo</th>
             <th>Qtd Devolver</th>
             <th>Estado</th>
+              <th>Custo Adicional</th>
             <th>Observações</th>
             <th>Ações</th>
           </tr>
@@ -66,28 +67,29 @@
       <div class="modal-body">
         <div class="mb-3">
           <label>Item</label>
-          <select id="item" class="form-control">
-            {% for i in itens_locacao %}
-              <option value="{{ i.id }}" data-produto="{{ i.produto.descricao }}" data-qtd="{{ i.quantidade }}" data-saldo="{{ i.saldo }}" onchange="atualizarMaxQtd()">
-                {{ i.produto.descricao }}
-              </option>
-            {% endfor %}
-          </select>
+        <select id="item" class="form-control" onchange="atualizarMaxQtd()">
+          {% for i in itens_locacao %}
+            <option value="{{ i.id }}" data-produto="{{ i.produto.descricao }}" data-qtd="{{ i.quantidade }}" data-saldo="{{ i.saldo_disponivel_devolucao }}" data-ressarcimento="{{ i.produto.ressarcimento }}">
+              {{ i.produto.descricao }}
+            </option>
+          {% endfor %}
+        </select>
         </div>
         <div class="mb-3">
           <label>Quantidade</label>
-          <input type="number" id="quantidade" class="form-control" min="1">
+          <input type="number" id="quantidade" class="form-control" min="1" oninput="validarQuantidade(this); atualizarCustoPorQuantidade()">
         </div>
         <div class="mb-3">
           <label>Estado</label>
-          <select id="estado" class="form-control">
+          <select id="estado" class="form-control" onchange="toggleCustoAdicional()">
             <option value="bom">Bom</option>
             <option value="danificado">Danificado</option>
+              <option value="inutilizado">Inutilizado</option>
           </select>
         </div>
         <div class="mb-3">
-          <label>Custo Adicional R$</label>
-          <input type="text" name="custo" class="form-control" data-mask="money">
+          <label>Custo Adicional R$ <small class="text-muted">(calculado automaticamente por quantidade)</small></label>
+          <input type="text" id="custo_adicional" name="custo" class="form-control" oninput="formatarValor(this)" onkeypress="return apenasNumeros(event)" disabled>
         </div>
         <div class="mb-3">
           <label>Observações</label>
@@ -114,10 +116,34 @@ document.getElementById("btn-add-item").addEventListener("click", function() {
   const quantidade = document.getElementById("quantidade").value;
   const estado = document.getElementById("estado").value;
   const observacoes = document.getElementById("observacoes").value;
+  const custoAdicional = document.getElementById("custo_adicional").value;
 
   if (quantidade <= 0) {
     alert("Quantidade inválida!");
     return;
+  }
+
+         // Calcula quantos itens deste produto já foram adicionados na sessão
+         let quantidadeJaAdicionada = 0;
+         itens.forEach(item => {
+           if (item.item_locacao_id == itemId) {
+             quantidadeJaAdicionada += parseInt(item.quantidade);
+           }
+         });
+
+         // Saldo disponível = saldo inicial - quantidade já adicionada
+         const saldoInicial = parseInt(select.options[select.selectedIndex].dataset.saldo);
+         const saldoDisponivel = saldoInicial - quantidadeJaAdicionada;
+
+         if (quantidade > saldoDisponivel) {
+           alert(`A quantidade máxima permitida é ${saldoDisponivel} (saldo disponível para devolução)`);
+           return;
+         }
+
+  // Converte o valor formatado de volta para número
+  let custoNumerico = 0;
+  if (custoAdicional && custoAdicional !== '') {
+    custoNumerico = parseFloat(custoAdicional.replace(',', '.'));
   }
 
   const item = {
@@ -126,6 +152,7 @@ document.getElementById("btn-add-item").addEventListener("click", function() {
     quantidade: quantidade,
     estado: estado,
     observacoes: observacoes,
+    custo_adicional: custoNumerico,
     qtd_locada: qtdLocada,
     saldo: saldo
   };
@@ -143,13 +170,30 @@ function atualizarTabela() {
   const tbody = document.querySelector("#tabela-itens tbody");
   tbody.innerHTML = "";
   itens.forEach((i, index) => {
+    let custoFormatado = '-';
+    if (i.custo_adicional && i.custo_adicional > 0) {
+      custoFormatado = `R$ ${parseFloat(i.custo_adicional).toFixed(2).replace('.', ',')}`;
+    }
+
+    // Calcula o saldo disponível atualizado para este item
+    const itemId = i.item_locacao_id;
+    const saldoInicial = parseInt(document.querySelector(`option[value="${itemId}"]`).dataset.saldo);
+    let quantidadeJaAdicionada = 0;
+    itens.forEach(item => {
+      if (item.item_locacao_id == itemId) {
+        quantidadeJaAdicionada += parseInt(item.quantidade);
+      }
+    });
+    const saldoDisponivel = saldoInicial - quantidadeJaAdicionada;
+
     tbody.innerHTML += `
       <tr>
         <td>${i.produto}</td>
         <td>${i.qtd_locada}</td>
-        <td>${i.saldo}</td>
+        <td>${saldoDisponivel}</td>
         <td>${i.quantidade}</td>
         <td>${i.estado}</td>
+        <td>${custoFormatado}</td>
         <td>${i.observacoes}</td>
         <td><button type="button" class="btn btn-danger btn-sm" onclick="removerItem(${index})">Remover</button></td>
       </tr>
@@ -161,13 +205,128 @@ function removerItem(index) {
   itens.splice(index, 1);
   atualizarTabela();
   document.getElementById("itens_json").value = JSON.stringify(itens);
+
+  // Atualiza o saldo disponível quando um item é removido
+  atualizarMaxQtd();
 }
 
 function atualizarMaxQtd() {
   const select = document.getElementById("item");
-  const saldo = select.options[select.selectedIndex].dataset.saldo;
-  document.getElementById("quantidade").max = saldo;
+  const itemId = select.value;
+  const saldoInicial = parseInt(select.options[select.selectedIndex].dataset.saldo);
+
+  // Calcula quantos itens deste produto já foram adicionados na sessão
+  let quantidadeJaAdicionada = 0;
+  itens.forEach(item => {
+    if (item.item_locacao_id == itemId) {
+      quantidadeJaAdicionada += parseInt(item.quantidade);
+    }
+  });
+
+  // Saldo disponível = saldo inicial - quantidade já adicionada
+  const saldoDisponivel = saldoInicial - quantidadeJaAdicionada;
+
+  document.getElementById("quantidade").max = saldoDisponivel;
   document.getElementById("quantidade").value = 1;
+
+  // Atualiza o custo adicional baseado na quantidade
+  atualizarCustoPorQuantidade();
 }
+
+function toggleCustoAdicional() {
+  const estado = document.getElementById("estado").value;
+  const custoAdicional = document.getElementById("custo_adicional");
+  const itemSelect = document.getElementById("item");
+
+  if (estado === "bom") {
+    custoAdicional.disabled = true;
+    custoAdicional.value = "";
+  } else {
+    custoAdicional.disabled = false;
+    atualizarCustoPorQuantidade();
+  }
+}
+
+function atualizarCustoPorQuantidade() {
+  const estado = document.getElementById("estado").value;
+  const custoAdicional = document.getElementById("custo_adicional");
+  const itemSelect = document.getElementById("item");
+  const quantidade = document.getElementById("quantidade").value;
+
+  if (estado !== "bom" && quantidade && quantidade > 0) {
+    const ressarcimento = itemSelect.options[itemSelect.selectedIndex].dataset.ressarcimento;
+    if (ressarcimento && ressarcimento !== '') {
+      // Converte o valor brasileiro (vírgula) para formato numérico
+      let valorNumerico = parseFloat(ressarcimento.replace(',', '.'));
+      let custoTotal = valorNumerico * parseInt(quantidade);
+      custoAdicional.value = custoTotal.toFixed(2).replace('.', ',');
+    }
+  }
+}
+
+function apenasNumeros(event) {
+  const char = String.fromCharCode(event.which);
+  if (!/[0-9]/.test(char)) {
+    event.preventDefault();
+    return false;
+  }
+  return true;
+}
+
+function formatarValor(input) {
+  // Remove tudo que não é número
+  let valor = input.value.replace(/\D/g, '');
+
+  // Se não tem valor, limpa o campo
+  if (valor === '') {
+    input.value = '';
+    return;
+  }
+
+  // Converte para número e formata
+  let numero = parseInt(valor);
+  let valorFormatado = (numero / 100).toFixed(2);
+
+  // Formata como moeda brasileira
+  input.value = valorFormatado.replace('.', ',');
+}
+
+function preencherCustoInicial() {
+  atualizarCustoPorQuantidade();
+}
+
+function validarQuantidade(input) {
+  const itemSelect = document.getElementById("item");
+  const itemId = itemSelect.value;
+  const saldoInicial = parseInt(itemSelect.options[itemSelect.selectedIndex].dataset.saldo);
+
+  // Calcula quantos itens deste produto já foram adicionados na sessão
+  let quantidadeJaAdicionada = 0;
+  itens.forEach(item => {
+    if (item.item_locacao_id == itemId) {
+      quantidadeJaAdicionada += parseInt(item.quantidade);
+    }
+  });
+
+  // Saldo disponível = saldo inicial - quantidade já adicionada
+  const saldoDisponivel = saldoInicial - quantidadeJaAdicionada;
+  const quantidadeDigitada = parseInt(input.value);
+
+  if (quantidadeDigitada > saldoDisponivel) {
+    input.value = saldoDisponivel;
+    alert(`A quantidade máxima permitida é ${saldoDisponivel} (saldo disponível para devolução)`);
+  }
+}
+
+// Evento para quando o modal for mostrado
+document.addEventListener('DOMContentLoaded', function() {
+  const modal = document.getElementById('itemModal');
+  if (modal) {
+    modal.addEventListener('shown.bs.modal', function() {
+      preencherCustoInicial();
+      atualizarMaxQtd(); // Atualiza os saldos disponíveis
+    });
+  }
+});
 </script>
 {% endblock %}
