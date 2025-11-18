@@ -15,6 +15,7 @@ from django.shortcuts import render, redirect
 from uuid import uuid4
 from datetime import timedelta
 from django.shortcuts import get_object_or_404
+from calendar import monthrange
 
 def login_view(request):
     if request.method == "POST":
@@ -82,12 +83,73 @@ def list_empresas(request):
 @login_required(login_url='login')
 def listagem_locacoes(request):
     locacoes  = Locacao.objects.filter(status = 'aprovada')
-    return render(request, 'listagem_locacoes.html', {'locacoes': locacoes})
+
+    # Situacao da locacao
+    for locacao in locacoes:
+        if locacao.fim < date.today():
+            locacao.situacao = 'em dia'
+        else:
+            locacao.situacao = 'atrasada'
+
+    return render(request, 'listagem_locacoes.html', {'locacoes': locacoes})  
+
+
+@login_required(login_url='login')
+def renovar_locacao(request, locacao_id):
+    """
+    Renova uma locação estendendo a data de fim em N dias.
+    Espera um POST com campo 'dias' (opcional). Se 'dias' não for enviado,
+    usa o número de dias atual da locação. Retorna JSON se for AJAX,
+    ou redireciona para a listagem com mensagens.
+    """
+    locacao = get_object_or_404(Locacao, pk=locacao_id)
+
+    # Não permite renovação de locação concluída
+    if locacao.status.lower() == 'concluida' or locacao.status.lower() == 'concluída':
+        messages.error(request, "Não é possível renovar uma locação concluída.")
+        return redirect('listagem_locacoes')
+
+    # Bloqueia renovação se ainda houver itens com saldo a entregar
+    if locacao.possui_itens_com_saldo():
+        messages.error(request, "Não é possível renovar. Existem itens com saldo pendente.")
+        return redirect('listagem_locacoes')
+
+    dias_param = request.POST.get('dias') if request.method == 'POST' else None
+    try:
+        dias = int(dias_param) if dias_param else int(locacao.dias or 0)
+    except (ValueError, TypeError):
+        messages.error(request, "Quantidade de dias inválida.")
+        return redirect('listagem_locacoes')
+
+    if dias <= 0:
+        messages.error(request, "A quantidade de dias deve ser maior que zero.")
+        return redirect('listagem_locacoes')
+
+    locacao.fim = locacao.fim + timedelta(days=dias)
+    locacao.save()
+
+    valor_renovacao = (locacao.total / locacao.dias) * dias
+    locacao.total += valor_renovacao
+
+    # Gerar um registro no contaspagar referente à renovação, se aplicável
+    ContasPagar.objects.create(
+         descricao=f'Renovação da locação {locacao.codigo}',
+         valor=valor_renovacao,
+         data_vencimento=locacao.fim,
+         status='pendente'
+     )
+
+    success_message = f"Locação {locacao.codigo} renovada por {dias} dias (novo fim: {locacao.fim})."
+    #if request.is_ajax() or request.headers.get('x-requested-with') == 'XMLHttpRequest':
+    #    return JsonResponse({'success': True, 'message': success_message, 'novo_fim': str(locacao.fim)})
+
+    messages.success(request, success_message)
+    return redirect('listagem_locacoes')
 
 @login_required(login_url='login')
 def listagem_clientes(request):
     clientes  = CadCliente.objects.all()
-    return render(request, 'listagem_clientes.html', {'clientes': clientes})    
+    return render(request, 'listagem_clientes.html', {'clientes': clientes})
 
 @login_required(login_url='login')
 def cad_empresa(request):
@@ -518,15 +580,50 @@ from collections import defaultdict
 def listagem_cautela_entregas(request):
     entregas = EntregaLocacao.objects.select_related('locacao', 'produto').order_by('-created_at')
 
-    # Agrupar por código
     cautelas = defaultdict(list)
     for entrega in entregas:
         cautelas[entrega.codigo].append(entrega)
 
-    # Transforma em lista de tuplas (codigo, entregas)
-    context = {
-        'cautelas': cautelas.items()
-    }
+    lista_cautelas = []
+    for codigo, entregas_cautela in cautelas.items():
+        primeira    = entregas_cautela[0]
+        locacao     = primeira.locacao
+
+        itens_saldo = []
+        completa    = True
+
+        # verifica saldo por produto
+        for item in locacao.itens.all():
+            entregues_total = EntregaLocacao.objects.filter(
+                locacao=locacao, produto=item.produto
+            ).aggregate(total=Sum('quantidade'))['total'] or 0
+
+            saldo_item = item.quantidade - entregues_total
+
+            if saldo_item < 0:
+                saldo_item = 0
+
+            itens_saldo.append({
+                'produto': item.produto,
+                'solicitado': item.quantidade,
+                'entregues': entregues_total,
+                'saldo': saldo_item,
+            })
+
+            if saldo_item > 0:
+                completa = False
+
+        lista_cautelas.append({
+            'codigo': codigo,
+            'entregas': entregas_cautela,
+            'locacao': locacao,
+            'motorista': primeira.motorista,
+            'data': primeira.created_at,
+            'status': 'Completa' if completa else 'Pendente',
+            'itens_saldo': itens_saldo,
+        })
+
+    context = {'cautelas': lista_cautelas}
     return render(request, 'listagem_cautela_entregas.html', context)
 
 from django.contrib import messages
@@ -1000,7 +1097,7 @@ def cotacao(request):
             formset.instance = locacao  # <- ESSENCIAL
             formset.save()
 
-            # Registra movimentações
+            # Registra movimentações no estoque
             for item in locacao.itens.all():
                 Movimentacoes.objects.create(
                     produto=item.produto,
@@ -1028,6 +1125,69 @@ def cotacao(request):
         'formset': formset,
         'locacoes': locacoes,
     })
+
+import json
+from decimal import Decimal
+
+def cotacao_novo(request):
+    if request.method == "POST":
+        form = LocacaoForm(request.POST)
+
+        if form.is_valid():
+            cotacao = form.save()
+
+            itens_json = request.POST.get("itens_json")
+
+            if itens_json:
+                itens = json.loads(itens_json)
+
+                for item in itens:
+                    
+                    combo_id = item.get("combo_id")
+
+                    ItensLocacao.objects.create(
+                        locacao     = cotacao,
+                        produto_id  = item["id"],
+                        quantidade  = item["quantidade"],
+                        preco       = Decimal(item["preco"]),
+
+                        # campos opcionais (só existem quando for combo)
+                        combo_id    = combo_id if combo_id else None,
+                        combo_preco = Decimal(item.get("group_valor") or 0),
+                    )
+
+            messages.success(request, "Cotação salva com sucesso!")
+            return redirect("cotacao_novo")
+
+    else:
+        form = LocacaoForm(initial={
+            'codigo': f"LOC-{timezone.now().strftime('%Y%m%d%H%M%S')}",
+        })
+
+    return render(request, "cotacao_novo.html", {
+        "form": form,
+        "itens": CadProduto.objects.all(),
+        "combos": Combo.objects.all(),
+    })
+
+@login_required
+def get_combo_itens(request):
+    combo_id = request.GET.get("combo_id")
+    itens = ComboItem.objects.filter(combo_id=combo_id).select_related("produto")
+
+    data = [
+        {
+            "combo": item.combo.nome,
+            "combo_valor": item.combo.preco,
+            "codigo": item.produto.codigo,
+            "produto": item.produto.descricao,
+            "quantidade": item.quantidade,
+            "preco": item.produto.preco,  # ajuste para o nome real do campo do seu model
+        }
+        for item in itens
+    ]
+
+    return JsonResponse({"itens": data})
 
 @login_required(login_url='login')
 def aprovar_cotacao(request):
@@ -1250,8 +1410,8 @@ def saldo_estoque_produto_item(request):
 
     try:
         produto = CadProduto.objects.get(pk=produto_id)
-        saldo = ItensEstoque.objects.filter(produto=produto).filter(status='disponivel').count()
-        preco = produto.preco if produto.preco else 0
+        saldo   = ItensEstoque.objects.filter(produto=produto).filter(status='disponivel').count()
+        preco   = produto.preco if produto.preco else 0
         return JsonResponse({'saldo': saldo, 'preco': preco, 'produto': produto.descricao})
     except CadProduto.DoesNotExist:
         return JsonResponse({'error': 'Produto não encontrado'}, status=404)
@@ -1418,6 +1578,62 @@ def excluir_instrucao_cobranca(request, instrucao_id):
         messages.error(request, 'Instrução de cobrança não encontrada.')
 
     return redirect('cad_instrucao_cobranca')
+
+@login_required(login_url='login')
+def cad_cliente_cobranca(request):
+    condicoes           = ClienteCobranca.objects.all()
+    form                = ClienteCobrancaForm()
+
+    if request.method == 'POST':
+        form = ClienteCobrancaForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('cad_cliente_cobranca')
+
+    context = {
+        'form': form,
+        'condicoes': condicoes,
+    }
+    return render(request, 'financeiro/cliente_cobranca.html', context)
+
+@login_required(login_url='login')
+def alterar_cliente_cobranca(request, condicao_id):
+    condicoes            = ClienteCobranca.objects.all()
+    try:
+        condicao      = ClienteCobranca.objects.get(id=condicao_id)
+        form          = ClienteCobrancaForm(instance=condicao)
+    except ClienteCobranca.DoesNotExist:
+        form.add_error(None, 'Condição não encontrada para alteração.')
+    
+    if request.method == 'POST':
+            form = ClienteCobrancaForm(request.POST, instance=condicao)
+            if form.is_valid():
+                form.save()
+                messages.success(request, 'Condição de cobrança alterada com sucesso!')
+                return redirect('cad_cliente_cobranca')
+            else:
+                messages.error(request, 'Erro ao alterar a condição. Verifique os campos.')
+    else:
+        form = ClienteCobrancaForm(instance=condicao)
+
+    context = {
+        'form': form,
+        'condicoes': condicoes,
+        'id': condicao.id,
+    }
+    return render(request, 'financeiro/cliente_cobranca.html', context)
+
+def excluir_cliente_cobranca(request, condicao_id):
+    try:
+        condicao = ClienteCobranca.objects.get(id=condicao_id)
+        condicao.delete()
+        messages.success(request, 'Condição de cobrança excluída com sucesso.')
+    except ClienteCobranca.DoesNotExist:
+        messages.error(request, 'Condição de cobrança não encontrada.')
+
+    return redirect('cad_cliente_cobranca')
+
+
 @login_required(login_url='login')
 def gerar_conta_a_receber(request, locacao_id):
     locacao = Locacao.objects.get(pk=locacao_id)
@@ -1436,6 +1652,31 @@ def gerar_conta_a_receber(request, locacao_id):
     return redirect('titulos_a_receber')
 
 @login_required(login_url='login')
+def gerar_conta_a_receber_devolucao(request, locacao_id, devolucao_id):
+    locacao = Locacao.objects.get(pk=locacao_id)
+    devolucao = Devolucao.objects.get(pk=devolucao_id, locacao=locacao)
+    
+    # Calcula o total do custo adicional de todos os produtos da devolução
+    total_custo_adicional = devolucao.itens.aggregate(
+        total=models.Sum('custo_adicional')
+    )['total'] or 0
+    
+    # Cria o objeto ContasReceber
+    conta_receber = ContasReceber.objects.create(
+        cliente=locacao.cliente,
+        locacao=locacao,
+        descricao=f"Devolução referente à locação {locacao.codigo}",
+        valor_total=total_custo_adicional,
+        data_emissao=timezone.now().date(),
+        data_vencimento=timezone.now().date() + timezone.timedelta(days=30),  # 30 dias para vencimento
+        status='aberto',
+        forma_pagamento='boleto'
+    )
+    
+    messages.success(request, f"Conta a receber criada com sucesso! Valor: R$ {total_custo_adicional:.2f}")
+    return redirect('titulos_a_receber')
+
+@login_required(login_url='login')
 def titulos_a_receber(request):
     titulos = ContasReceber.objects.select_related('cliente', 'locacao').order_by('-data_emissao')
     return render(request, 'financeiro/titulos_a_receber.html', {'titulos': titulos})
@@ -1444,6 +1685,103 @@ def titulos_a_receber(request):
 def titulos_a_pagar(request):
     contas = ContasPagar.objects.all().order_by('data_vencimento')
     return render(request, 'financeiro/titulos_a_pagar.html', {'contas': contas})
+
+@login_required(login_url='login')
+def gerar_boleto(request, titulo_id):
+    titulo      = ContasReceber.objects.get(pk=titulo_id)
+    cobranca    = ClienteCobranca.objects.get(cliente=titulo.cliente)
+    empresa     = CadEmpresa.objects.last()
+    
+    #Campo para montagem do JSON
+    codigo      = titulo.cliente.codigo+"-"+titulo.locacao.codigo+"-"+str(titulo.data_emissao)
+    cedente     = empresa.cnpj
+
+    banco       = cobranca.conta.banco
+    conta       = cobranca.conta.numero
+    digito      = cobranca.conta.digito
+    convenio    = cobranca.conta.convenio
+    carteira    = cobranca.conta.carteira
+
+    cpf_cnpj    = titulo.cliente.cnpj_cpf
+    email       = titulo.cliente.email
+    cep         = titulo.cliente.cep
+    logradouro  = titulo.cliente.logradouro
+    numero      = titulo.cliente.numero
+    complemento = titulo.cliente.complemento
+    bairro      = titulo.cliente.bairro
+    cidade      = titulo.cliente.cidade
+    uf          = titulo.cliente.uf
+    pais        = "Brasil"
+    nome        = titulo.cliente.razao
+    telefone    = titulo.cliente.telefone
+
+    emissao     = str(titulo.data_emissao)
+    vencimento  = str(titulo.data_vencimento)
+    valor       = str(titulo.valor_total).replace(".", ",")
+    mensagem1   = cobranca.instrucao.mensagem1
+    mensagem2   = cobranca.instrucao.mensagem2
+    mensagem3   = cobranca.instrucao.mensagem3
+    local       = cobranca.instrucao.local_pagamento
+
+    import requests
+    import json
+
+    #url = "https://plugboleto.com.br/api/v1/boletos/lote"
+    url = "https://homologacao.plugboleto.com.br/api/v1/boletos/lote"
+
+    payload = json.dumps([
+    {
+        "CedenteContaNumero": conta,
+        "CedenteContaNumeroDV": digito,
+        "CedenteConvenioNumero": convenio,
+        "CedenteContaCodigoBanco": banco,
+        "SacadoCPFCNPJ": cpf_cnpj,
+        "SacadoEmail": email,
+        "SacadoEnderecoNumero": numero,
+        "SacadoEnderecoBairro": bairro,
+        "SacadoEnderecoCEP": cep,
+        "SacadoEnderecoCidade": cidade,
+        "SacadoEnderecoComplemento": complemento,
+        "SacadoEnderecoLogradouro": logradouro,
+        "SacadoEnderecoPais": pais,
+        "SacadoEnderecoUF": uf,
+        "SacadoNome": nome,
+        "SacadoTelefone": telefone,
+        "TituloDataEmissao": emissao,
+        "TituloDataVencimento": vencimento,
+        "TituloMensagem01": mensagem1,
+        "TituloMensagem02": mensagem2,
+        "TituloMensagem03": mensagem3,
+        "TituloNossoNumero": carteira,
+        "TituloNumeroDocumento": codigo,
+        "TituloValor": valor,
+        "TituloLocalPagamento": local
+    }
+    ])
+    headers = {
+    'cnpj-sh': '61664307000181',
+    'token-sh': 'e0bb51a3d6d2b3fa18d444136bf859ee',
+    'cnpj-cedente': cedente,
+    'Content-Type': 'application/json'
+    }
+
+    response = requests.request("POST", url, headers=headers, data=payload)
+    retorno = response.json()
+
+    if retorno["_status"] == "erro":
+        messages.error(request, "Erro ao gerar boleto: " + retorno["_mensagem"])
+    elif retorno["_status"] == "sucesso":
+        if len(retorno['_dados']['_falha']) > 0:
+            messages.error(request, "Erro ao gerar boleto!")
+        else:
+            messages.success(request, "Boleto gerado com sucesso!")
+            link_boleto = "https://homologacao.plugboleto.com.br/api/v1/boletos/impressao/"+retorno['_dados']['_sucesso'][0]['idImpressao']
+            titulo.link_boleto = link_boleto
+            titulo.save()
+
+    print(retorno)
+
+    return redirect('titulos_a_receber')
 
 ####################### DASHBOARD ########################
 from django.db.models import Sum, Count
@@ -1461,19 +1799,19 @@ def home(request):
     itens_locados   = ItensEstoque.objects.filter(status='locado').count()
     receita_mes     = ItensLocacao.objects.filter(locacao__data__gte=inicio_mes).aggregate(total=Sum('preco'))['total'] or 0
 
-    # Gráfico: locações por dia
-    locs_por_dia = (
+    # Gráfico: locações por semana
+    locs_por_semana = (
         locacoes_mes
-        .values('data')
+        .values('data__week')
         .annotate(qtd=Count('id'))
-        .order_by('data')
+        .order_by('data__week')
     )
-    data_x = [d['data'] for d in locs_por_dia]
-    data_y = [d['qtd'] for d in locs_por_dia]
+    data_x = [d['data__week'] for d in locs_por_semana]
+    data_y = [d['qtd'] for d in locs_por_semana]
 
     fig_linhas = go.Figure()
-    fig_linhas.add_trace(go.Line(x=data_x, y=data_y, name='Locações', marker=dict(color='#2c2762')))
-    fig_linhas.update_layout(title='Locações por Dia', xaxis_title='Data', yaxis_title='Qtd', plot_bgcolor='white', font=dict(color='#333'), title_font=dict(color='#800AD0'), margin=dict(t=50, l=40, r=40, b=40))
+    fig_linhas.add_trace(go.Line(x=data_x, y=data_y, name='Locações', marker=dict(color='#47ea89')))
+    fig_linhas.update_layout(title='Locações por Semana', xaxis_title='Semana', yaxis_title='Qtd', plot_bgcolor='#2c2762', paper_bgcolor='#2c2762', font=dict(color='#fff'), title_font=dict(color='#ffffff'), margin=dict(t=50, l=40, r=40, b=40))
     plot_linhas = plot(fig_linhas, output_type='div', include_plotlyjs=False)
 
     # Gráfico: status dos itens
@@ -1485,10 +1823,10 @@ def home(request):
     labels = [s['status'].capitalize() for s in status_itens]
     values = [s['qtd'] for s in status_itens]
 
-    cores_pizza = ['#6c757d', '#2c2762', '#47ea89', '#ffffff']  # primária, secundária, tons neutros
+    cores_pizza = ['#47afff', '#47ea89', '#ffff00']  # primária, secundária, tons neutros
 
-    fig_pizza = go.Figure(data=[go.Pie(labels=labels, values=values, marker=dict(colors=cores_pizza), textinfo='label+percent', insidetextorientation='radial')])
-    fig_pizza.update_layout(title='Status dos Itens de Estoque', title_font=dict(color='#2c2762'), font=dict(color='#333'), margin=dict(t=50, l=40, r=40, b=40))
+    fig_pizza = go.Figure(data=[go.Pie(labels=labels, values=values, hole=.3, marker=dict(colors=cores_pizza), textinfo='label+percent', insidetextorientation='radial')])
+    fig_pizza.update_layout(title='Status dos Itens de Estoque', plot_bgcolor='#2c2762', paper_bgcolor='#2c2762', title_font=dict(color='#ffffff'), font=dict(color='#fff'), margin=dict(t=50, l=40, r=40, b=40))
     plot_pizza = plot(fig_pizza, output_type='div', include_plotlyjs=False)
 
     # 📊 NOVO: Gráfico de faturamento por produto
@@ -1505,23 +1843,36 @@ def home(request):
 
     fig_faturamento = go.Figure()
     fig_faturamento.add_trace(go.Bar(
-        x=produtos,
-        y=valores,
+        x=valores,
+        y=produtos,
         name='Faturamento',
-        marker=dict(color='#2c2762'),
+        marker=dict(color='#47ea89'),
         text=valores,
-        textposition='auto'  # cor secundária
+        textposition='auto',
+        orientation='h'
     ))
     fig_faturamento.update_layout(
         title='Faturamento por Produto Locado',
         xaxis_title='Produto',
         yaxis_title='R$',
-        plot_bgcolor='white',
-        font=dict(color='#333'),
-        title_font=dict(color='#2c2762'),
+        plot_bgcolor='#2c2762',
+        paper_bgcolor='#2c2762',
+        font=dict(color='#fff'),
+        title_font=dict(color='#ffffff'),
         margin=dict(t=50, l=40, r=40, b=40)
     )
     plot_faturamento = plot(fig_faturamento, output_type='div', include_plotlyjs=False)
+
+    # Pegando as 4 últimas locações
+    ultimas_locacoes = Locacao.objects.all().order_by('-data')[:4]
+
+    # Pegando os 4 produtos mais locados
+    produtos_mais_locados = (
+        ItensLocacao.objects
+        .values('produto__descricao')
+        .annotate(qtd_locada=Count('id'))
+        .order_by('-qtd_locada')[:4]
+    )
 
     return render(request, 'home.html', {
         'total_locacoes': total_locacoes,
@@ -1530,8 +1881,110 @@ def home(request):
         'receita_mes': receita_mes,
         'plot_linhas': plot_linhas,
         'plot_pizza': plot_pizza,
-        'plot_faturamento': plot_faturamento
+        'plot_faturamento': plot_faturamento,
+        'ultimas_locacoes': ultimas_locacoes,
+        'produtos_mais_locados': produtos_mais_locados,
     })
+
+from django.db.models import Count, Avg, F, ExpressionWrapper, DurationField
+from django.shortcuts import render
+from django.utils import timezone
+import plotly.graph_objects as go
+import plotly.express as px
+import json
+import pandas as pd
+
+@login_required(login_url='login')
+def dashboard_manutencao(request):
+    total_manutencoes = Manutencao.objects.count()
+    manutencoes_concluidas = EtapaManutencaoExecutada.objects.filter(status='concluida').values('manutencao').distinct().count()
+    manutencoes_pendentes = total_manutencoes - manutencoes_concluidas
+
+    # Tempo médio entre início e última etapa concluída
+    from django.db.models import Avg, F
+    etapas_concluidas = EtapaManutencaoExecutada.objects.filter(data_conclusao__isnull=False)
+    tempo_medio = etapas_concluidas.aggregate(
+        media=(Avg(F('data_conclusao') - F('data_prevista')))
+    )['media']
+    tempo_medio = tempo_medio.days if tempo_medio else 0
+
+    # Paleta de cores padrão do sistema
+    cores = ['#2c2762', '#47ea89', '#6c757d', '#ffffff']
+
+    # Gráfico 1: Distribuição de status das etapas
+    etapas = EtapaManutencaoExecutada.objects.values('status').annotate(total=models.Count('id'))
+    df_status = pd.DataFrame(etapas)
+    if not df_status.empty:
+        grafico_status = px.pie(
+            df_status,
+            values='total',
+            names='status',
+            title='Distribuição de Status das Etapas',
+            color='status',
+            color_discrete_sequence=cores
+        ).update_layout(
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            font=dict(color='#2c2762')
+        ).to_html(full_html=False)
+    else:
+        grafico_status = "<p>Nenhum dado disponível.</p>"
+
+    # Gráfico 2: Quantidade de manutenções por fluxo
+    fluxos = Manutencao.objects.values('fluxo__nome').annotate(total=models.Count('id'))
+    df_fluxos = pd.DataFrame(fluxos)
+    if not df_fluxos.empty:
+        grafico_fluxos = px.bar(
+            df_fluxos,
+            x='fluxo__nome',
+            y='total',
+            title='Manutenções por Fluxo',
+            color='fluxo__nome',
+            color_discrete_sequence=cores
+        ).update_layout(
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            font=dict(color='#2c2762')
+        ).to_html(full_html=False)
+    else:
+        grafico_fluxos = "<p>Nenhum dado disponível.</p>"
+
+    # Gráfico 3: Tempo médio por etapa
+    tempos = (
+        EtapaManutencaoExecutada.objects
+        .filter(data_conclusao__isnull=False)
+        .values('etapa__nome')
+        .annotate(dias=Avg(F('data_conclusao') - F('data_prevista')))
+    )
+    df_tempo = pd.DataFrame(tempos)
+    if not df_tempo.empty:
+        df_tempo['dias'] = df_tempo['dias'].dt.days  # converte timedelta para número
+        grafico_tempo_execucao = px.line(
+            df_tempo,
+            x='etapa__nome',
+            y='dias',
+            markers=True,
+            title='Tempo Médio de Execução por Etapa',
+            color_discrete_sequence=[cores[0]]
+        ).update_layout(
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            font=dict(color='#2c2762')
+        ).to_html(full_html=False)
+    else:
+        grafico_tempo_execucao = "<p>Nenhum dado disponível.</p>"
+
+    context = {
+        'total_manutencoes': total_manutencoes,
+        'manutencoes_concluidas': manutencoes_concluidas,
+        'manutencoes_pendentes': manutencoes_pendentes,
+        'tempo_medio': tempo_medio,
+        'grafico_status': grafico_status,
+        'grafico_fluxos': grafico_fluxos,
+        'grafico_tempo_execucao': grafico_tempo_execucao,
+    }
+    return render(request, 'manutencao/dashboard.html', context)
+
 
 ######################################### MANUTENCOES #########################################
 from django.utils import timezone
@@ -1837,6 +2290,39 @@ def solicitacaodecompra(request):
                             valor_unitario=i['valor_unitario']
                         )
 
+                # Criar ContasPagar automaticamente
+                try:
+                    # Calcular data de vencimento (um mês à frente)
+                    hoje = timezone.now().date()
+                    # Adicionar um mês de forma segura
+                    if hoje.month == 12:
+                        # Se estiver em dezembro, vai para janeiro do próximo ano
+                        data_vencimento = hoje.replace(year=hoje.year + 1, month=1)
+                    else:
+                        # Adicionar um mês
+                        proximo_mes = hoje.month + 1
+                        # Verificar quantos dias tem o próximo mês
+                        _, ultimo_dia_mes = monthrange(hoje.year, proximo_mes)
+                        # Se o dia atual for maior que o último dia do próximo mês, usar o último dia
+                        dia_vencimento = min(hoje.day, ultimo_dia_mes)
+                        data_vencimento = hoje.replace(month=proximo_mes, day=dia_vencimento)
+                    
+                    # Criar a conta a pagar
+                    ContasPagar.objects.create(
+                        solicitacao=solicitacao,
+                        fornecedor=solicitacao.fornecedor,
+                        descricao=f"Conta a pagar gerada da solicitação de código {solicitacao.codigo}",
+                        valor=solicitacao.valor_total,
+                        data_emissao=hoje,
+                        data_vencimento=data_vencimento,
+                        status='em_aprovacao',
+                        quantidade_parcelas=1,
+                        parcela_atual=1
+                    )
+                except Exception as e:
+                    # Log do erro mas não impede o sucesso da solicitação
+                    messages.warning(request, f"Solicitação criada com sucesso, mas houve um erro ao gerar a conta a pagar: {str(e)}")
+
                 messages.success(request, "Solicitação incluída com sucesso.")
                 return redirect('solicitacaodecompra')
     else:
@@ -1914,3 +2400,237 @@ class CriarGrupoEPermissoesView(PermissionRequiredMixin, View):
             'available_permissions': available_permissions
         }
         return render(request, self.template_name, context)
+
+@login_required(login_url='login')
+def combo_produtos(request):
+    if request.method == 'POST':
+            form = ComboForm(request.POST)
+            if form.is_valid():
+                form.save()
+
+                # Salvar os itens
+                itens_json = request.POST.get('itens_json')
+                if itens_json:
+                    itens = json.loads(itens_json)
+                    for i in itens:
+                        ComboItem.objects.create(
+                            combo_id=form.instance.id,
+                            produto_id=i['id'],
+                            quantidade=i['quantidade'],
+                        )
+
+                messages.success(request, "Solicitação incluída com sucesso.")
+                return redirect('combo_produtos')
+    else:
+        form = ComboForm()
+
+    return render(request, 'combo_produtos.html', {
+        'form': form,
+        'itens': CadProduto.objects.all()  # para o select
+    })
+
+@login_required(login_url='login')
+def listagem_combo_produtos(request):
+    combos = Combo.objects.prefetch_related('itens').all()
+
+    return render(request, 'listagem_combo_produtos.html', {
+        'combos': combos,
+    })
+
+@login_required(login_url='login')
+def excluir_combo(request, combo_id):
+    combo = get_object_or_404(Combo, id=combo_id)
+    if request.method == 'POST':
+        combo.delete()
+        messages.success(request, "Combo excluído com sucesso.")
+        return redirect('listagem_combo_produtos')
+
+############################ TROCA DE EQUIPAMENTOS ############################
+
+@login_required(login_url='login')
+def solicitar_troca_equipamento(request, locacao_id):
+    """
+    Exibe formulário para solicitar troca de equipamentos em uma locação
+    """
+    locacao = get_object_or_404(Locacao, pk=locacao_id)
+    
+    # Cria formset para os itens da troca
+    ItemTrocaFormSet = inlineformset_factory(
+        TrocaEquipamento,
+        ItemTrocaEquipamento,
+        form=ItemTrocaEquipamentoForm,
+        extra=1,
+        can_delete=True
+    )
+    
+    if request.method == 'POST':
+        troca_form = TrocaEquipamentoForm(request.POST)
+        formset = ItemTrocaFormSet(request.POST)
+        
+        if troca_form.is_valid():
+            # Calcula valores para criar a troca
+            valor_novo = request.POST.get('valor_novo')
+            valor_original = request.POST.get('valor_original')
+            
+            troca = troca_form.save(commit=False)
+            troca.locacao = locacao
+            troca.usuario_solicitante = request.user
+            troca.valor_original = Decimal(valor_original or '0.00')
+            troca.valor_novo = Decimal(valor_novo or '0.00')
+            troca.save()
+            
+            # Salva os itens da troca
+            formset.instance = troca
+            if formset.is_valid():
+                formset.save()
+                messages.success(request, "Solicitação de troca enviada para aprovação.")
+                return redirect('listar_trocas_equipamento')
+            else:
+                # Se os itens forem inválidos, deleta a troca
+                troca.delete()
+                messages.error(request, "Erro ao salvar os itens da troca.")
+        else:
+            messages.error(request, "Formulário inválido.")
+    
+    else:
+        # Calcula valor total da locação original
+        valor_original = sum(
+            Decimal(str(item.quantidade)) * item.preco 
+            for item in locacao.itens.all()
+        )
+        
+        troca_form = TrocaEquipamentoForm(initial={
+            'valor_original': valor_original
+        })
+        formset = ItemTrocaFormSet()
+    
+    context = {
+        'locacao': locacao,
+        'troca_form': troca_form,
+        'formset': formset,
+        'itens_locacao': locacao.itens.all(),
+    }
+    
+    return render(request, 'troca_equipamento.html', context)
+
+@login_required(login_url='login')
+def listar_trocas_equipamento(request):
+    """
+    Lista todas as trocas de equipamentos com filtro de status
+    """
+    status_filter = request.GET.get('status', '')
+    
+    trocas = TrocaEquipamento.objects.select_related('locacao', 'usuario_solicitante').order_by('-data_solicitacao')
+    
+    if status_filter:
+        trocas = trocas.filter(status=status_filter)
+    
+    context = {
+        'trocas': trocas,
+        'status_filter': status_filter,
+    }
+    
+    return render(request, 'listagem_trocas_equipamento.html', context)
+
+@login_required(login_url='login')
+def aprovar_troca_equipamento(request, troca_id):
+    """
+    Aprova uma solicitação de troca de equipamento e gera título se houver diferença
+    """
+    from django.utils import timezone
+    
+    troca = get_object_or_404(TrocaEquipamento, pk=troca_id)
+    
+    if troca.status != 'pendente':
+        messages.warning(request, f"Troca não está pendente. Status atual: {troca.get_status_display()}")
+        return redirect('listar_trocas_equipamento')
+    
+    # Aprova a troca
+    troca.status = 'aprovada'
+    troca.usuario_aprovador = request.user
+    troca.data_aprovacao = timezone.now()
+    
+    # Se houver diferença positiva, gera título em contas a receber
+    if troca.diferenca_valor > 0:
+        titulo = ContasReceber.objects.create(
+            cliente=troca.locacao.cliente,
+            locacao=troca.locacao,
+            descricao=f'Ajuste por troca de equipamento - Solicitação #{troca.pk}',
+            valor_total=troca.diferenca_valor,
+            data_emissao=timezone.now().date(),
+            data_vencimento=timezone.now().date() + timedelta(days=7),
+            status='aberto',
+            forma_pagamento='boleto'
+        )
+        troca.titulo_gerado = titulo
+        messages.success(
+            request, 
+            f"Troca aprovada. Título de R$ {formatar_moeda(troca.diferenca_valor)} criado para cobrança."
+        )
+    else:
+        messages.success(request, "Troca aprovada com sucesso.")
+    
+    troca.save()
+    
+    return redirect('listar_trocas_equipamento')
+
+@login_required(login_url='login')
+def rejeitar_troca_equipamento(request, troca_id):
+    """
+    Rejeita uma solicitação de troca de equipamento
+    """
+    troca = get_object_or_404(TrocaEquipamento, pk=troca_id)
+    
+    if troca.status != 'pendente':
+        messages.warning(request, f"Troca não está pendente. Status atual: {troca.get_status_display()}")
+        return redirect('listar_trocas_equipamento')
+    
+    troca.status = 'rejeitada'
+    troca.usuario_aprovador = request.user
+    troca.save()
+    
+    messages.success(request, "Troca rejeitada.")
+    return redirect('listar_trocas_equipamento')
+
+@login_required(login_url='login')
+def concluir_troca_equipamento(request, troca_id):
+    """
+    Marca a troca de equipamento como concluída
+    """
+    troca = get_object_or_404(TrocaEquipamento, pk=troca_id)
+    
+    if troca.status != 'aprovada':
+        messages.warning(request, f"Somente trocas aprovadas podem ser concluídas. Status: {troca.get_status_display()}")
+        return redirect('listar_trocas_equipamento')
+    
+    # Atualiza o status dos itens de estoque
+    for item_troca in troca.itens.all():
+        # Marca item removido como disponível novamente (se não foi devolvido)
+        if item_troca.item_estoque_removido:
+            item_troca.item_estoque_removido.status = 'disponivel'
+            item_troca.item_estoque_removido.save()
+        
+        # Marca item adicionado como locado
+        if item_troca.item_estoque_adicionado:
+            item_troca.item_estoque_adicionado.status = 'locado'
+            item_troca.item_estoque_adicionado.save()
+    
+    troca.status = 'concluida'
+    troca.save()
+    
+    messages.success(request, "Troca concluída com sucesso.")
+    return redirect('listar_trocas_equipamento')
+
+@login_required(login_url='login')
+def visualizar_troca_equipamento(request, troca_id):
+    """
+    Exibe detalhes de uma troca de equipamento
+    """
+    troca = get_object_or_404(TrocaEquipamento, pk=troca_id)
+    
+    context = {
+        'troca': troca,
+        'itens_troca': troca.itens.all(),
+    }
+    
+    return render(request, 'visualizar_troca_equipamento.html', context)

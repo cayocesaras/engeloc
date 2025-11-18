@@ -1,0 +1,288 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Solicitar Troca de Equipamentos{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <h2>Solicitar Troca de Equipamentos</h2>
+            <hr>
+            
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <!-- Informações da Locação -->
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Dados da Locação</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <strong>Código:</strong> {{ locacao.codigo }}
+                        </div>
+                        <div class="col-md-4">
+                            <strong>Cliente:</strong> {{ locacao.cliente.razao }}
+                        </div>
+                        <div class="col-md-4">
+                            <strong>Data:</strong> {{ locacao.data|date:'d/m/Y' }}
+                        </div>
+                    </div>
+                    <div class="row mt-2">
+                        <div class="col-md-4">
+                            <strong>Início:</strong> {{ locacao.inicio|date:'d/m/Y' }}
+                        </div>
+                        <div class="col-md-4">
+                            <strong>Fim:</strong> {{ locacao.fim|date:'d/m/Y' }}
+                        </div>
+                        <div class="col-md-4">
+                            <strong>Dias:</strong> {{ locacao.dias }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Itens Atuais da Locação -->
+            <div class="card mb-4">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">Itens Atuais da Locação</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Produto</th>
+                                    <th class="text-center">Quantidade</th>
+                                    <th class="text-right">Preço Unit.</th>
+                                    <th class="text-right">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in itens_locacao %}
+                                    <tr>
+                                        <td>{{ item.produto.descricao }}</td>
+                                        <td class="text-center">{{ item.quantidade }}</td>
+                                        <td class="text-right">R$ {{ item.preco|floatformat:2 }}</td>
+                                        <td class="text-right">R$ {{ item.quantidade|add:item.preco|floatformat:2 }}</td>
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="4" class="text-center text-muted">Nenhum item na locação</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Formulário de Troca -->
+            <form method="post" class="needs-validation" novalidate>
+                {% csrf_token %}
+
+                <div class="card mb-4">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="mb-0">Informações da Troca</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ troca_form.valor_original.id_for_label }}" class="form-label">
+                                        {{ troca_form.valor_original.label }}
+                                    </label>
+                                    {{ troca_form.valor_original }}
+                                    {% if troca_form.valor_original.errors %}
+                                        <small class="text-danger">{{ troca_form.valor_original.errors }}</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ troca_form.valor_novo.id_for_label }}" class="form-label">
+                                        {{ troca_form.valor_novo.label }}
+                                    </label>
+                                    {{ troca_form.valor_novo }}
+                                    {% if troca_form.valor_novo.errors %}
+                                        <small class="text-danger">{{ troca_form.valor_novo.errors }}</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <strong>Diferença:</strong> 
+                            <span id="diferenca">R$ 0,00</span>
+                            <p class="mb-0 mt-2">
+                                <small>Se a diferença for positiva, um título será gerado em contas a receber.</small>
+                            </p>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ troca_form.observacoes.id_for_label }}" class="form-label">
+                                {{ troca_form.observacoes.label }}
+                            </label>
+                            {{ troca_form.observacoes }}
+                            {% if troca_form.observacoes.errors %}
+                                <small class="text-danger">{{ troca_form.observacoes.errors }}</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Itens da Troca -->
+                <div class="card mb-4">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">Itens da Troca</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            {{ formset.management_form }}
+                            <table class="table table-sm table-hover" id="troca-table">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th colspan="4" class="bg-danger text-white">Removido</th>
+                                        <th colspan="4" class="bg-success text-white">Adicionado</th>
+                                        <th class="text-center">Ação</th>
+                                    </tr>
+                                    <tr>
+                                        <th>Produto</th>
+                                        <th class="text-center">Qtd</th>
+                                        <th class="text-right">Preço</th>
+                                        <th class="text-right">Total</th>
+                                        <th>Produto</th>
+                                        <th class="text-center">Qtd</th>
+                                        <th class="text-right">Preço</th>
+                                        <th class="text-right">Total</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody class="formset">
+                                    {% for form in formset %}
+                                        <tr class="formset-row" id="form-{{ forloop.counter0 }}">
+                                            <td>
+                                                {{ form.produto_removido }}
+                                                {% if form.produto_removido.errors %}
+                                                    <small class="text-danger">{{ form.produto_removido.errors }}</small>
+                                                {% endif %}
+                                            </td>
+                                            <td class="text-center">
+                                                {{ form.quantidade_removida }}
+                                            </td>
+                                            <td class="text-right">
+                                                {{ form.preco_removido }}
+                                            </td>
+                                            <td class="text-right total-removido">R$ 0,00</td>
+                                            
+                                            <td>
+                                                {{ form.produto_adicionado }}
+                                            </td>
+                                            <td class="text-center">
+                                                {{ form.quantidade_adicionada }}
+                                            </td>
+                                            <td class="text-right">
+                                                {{ form.preco_adicionado }}
+                                            </td>
+                                            <td class="text-right total-adicionado">R$ 0,00</td>
+                                            
+                                            <td class="text-center">
+                                                {% if forloop.counter > 1 %}
+                                                    <button type="button" class="btn btn-sm btn-danger remove-form">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                {% endif %}
+                                                {{ form.DELETE }}
+                                            </td>
+                                        </tr>
+                                    {% empty %}
+                                        <tr class="formset-row" id="form-0">
+                                            <td colspan="9" class="text-center text-muted">Nenhum item adicionado</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <button type="button" class="btn btn-primary btn-sm" id="add-form">
+                            <i class="bi bi-plus"></i> Adicionar Item
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Botões de Ação -->
+                <div class="row">
+                    <div class="col-md-12">
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-circle"></i> Solicitar Troca
+                        </button>
+                        <a href="{% url 'locacao' %}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> Cancelar
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const valorOriginal = document.querySelector('[name="valor_original"]');
+    const valorNovo = document.querySelector('[name="valor_novo"]');
+    const diferenca = document.querySelector('#diferenca');
+
+    function calcularDiferenca() {
+        const original = parseFloat(valorOriginal.value) || 0;
+        const novo = parseFloat(valorNovo.value) || 0;
+        const diff = novo - original;
+        
+        diferenca.textContent = 'R$ ' + diff.toFixed(2).replace('.', ',');
+        if (diff > 0) {
+            diferenca.parentElement.classList.add('text-danger');
+        } else {
+            diferenca.parentElement.classList.remove('text-danger');
+        }
+    }
+
+    valorOriginal.addEventListener('change', calcularDiferenca);
+    valorNovo.addEventListener('change', calcularDiferenca);
+
+    // Adicionar nova linha
+    document.getElementById('add-form').addEventListener('click', function() {
+        const formCount = document.querySelectorAll('.formset-row').length;
+        const formsetManagementForm = document.querySelector('[name="itens-TOTAL_FORMS"]');
+        
+        const newForm = document.querySelector('.formset-row:first-child').cloneNode(true);
+        newForm.id = `form-${formCount}`;
+        newForm.querySelectorAll('input, select, textarea').forEach(field => {
+            field.value = '';
+        });
+        
+        document.querySelector('.formset').appendChild(newForm);
+        formsetManagementForm.value = formCount + 1;
+    });
+
+    // Remover linha
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-form')) {
+            e.target.closest('.formset-row').remove();
+        }
+    });
+});
+</script>
+
+<style>
+.table-light {
+    background-color: #f5f5f5;
+}
+</style>
+{% endblock %}

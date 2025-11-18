@@ -23,9 +23,19 @@
           <td>
             <input type="text" name="numero_serie_{{ item.id }}" 
                    value="{{ item.numero_serie|default_if_none:'' }}" 
-                   class="form-control">
+                   class="form-control"> 
           </td>
-          <td>{{item.status}}</td>
+          <td>
+              {% if item.status == 'disponivel' %}
+                  <span class="badge bg-success">Disponível</span>
+              {% elif item.status == 'locado' %}
+                  <span class="badge bg-primary">Locado</span>
+              {% elif item.status == 'manutencao' %}
+                  <span class="badge bg-warning text-dark">Em Manutenção</span>
+              {% else %}
+                  <span class="badge bg-danger">Danificado</span>
+              {% endif %}
+          </td>
           <td>{{ item.data_ultimo_status|date:"d/m/Y H:i" }}</td>
           <td>
             <textarea name="observacoes_{{ item.id }}" class="form-control" rows="1">{{ item.observacoes }}</textarea>

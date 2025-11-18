@@ -1,0 +1,240 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Visualizar Troca de Equipamento{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <h2>Detalhes da Troca #{{ troca.pk }}</h2>
+            <hr>
+
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <!-- Informações Gerais da Troca -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Informações da Troca</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <strong>ID:</strong> #{{ troca.pk }}
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Status:</strong>
+                            {% if troca.status == 'pendente' %}
+                                <span class="badge bg-warning text-dark">Pendente</span>
+                            {% elif troca.status == 'aprovada' %}
+                                <span class="badge bg-success">Aprovada</span>
+                            {% elif troca.status == 'rejeitada' %}
+                                <span class="badge bg-danger">Rejeitada</span>
+                            {% elif troca.status == 'concluida' %}
+                                <span class="badge bg-info">Concluída</span>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Data Solicitação:</strong> {{ troca.data_solicitacao|date:'d/m/Y H:i' }}
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Solicitante:</strong> {{ troca.usuario_solicitante.get_full_name }}
+                        </div>
+                    </div>
+                    {% if troca.usuario_aprovador %}
+                        <div class="row mt-3">
+                            <div class="col-md-3">
+                                <strong>Aprovador:</strong> {{ troca.usuario_aprovador.get_full_name }}
+                            </div>
+                            <div class="col-md-3">
+                                <strong>Data Aprovação:</strong> {{ troca.data_aprovacao|date:'d/m/Y H:i' }}
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Dados da Locação -->
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Dados da Locação</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <strong>Código:</strong> {{ troca.locacao.codigo }}
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Cliente:</strong> {{ troca.locacao.cliente.razao }}
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Início:</strong> {{ troca.locacao.inicio|date:'d/m/Y' }}
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Fim:</strong> {{ troca.locacao.fim|date:'d/m/Y' }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Valores da Troca -->
+            <div class="card mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">Resumo Financeiro</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="alert alert-secondary">
+                                <strong>Valor Original:</strong><br>
+                                <h4>R$ {{ troca.valor_original|floatformat:2 }}</h4>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="alert alert-info">
+                                <strong>Valor Novo:</strong><br>
+                                <h4>R$ {{ troca.valor_novo|floatformat:2 }}</h4>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="alert {% if troca.diferenca_valor > 0 %}alert-danger{% elif troca.diferenca_valor < 0 %}alert-success{% else %}alert-secondary{% endif %}">
+                                <strong>Diferença:</strong><br>
+                                <h4>
+                                    {% if troca.diferenca_valor > 0 %}
+                                        + R$ {{ troca.diferenca_valor|floatformat:2 }}
+                                    {% elif troca.diferenca_valor < 0 %}
+                                        - R$ {{ troca.diferenca_valor|abs|floatformat:2 }}
+                                    {% else %}
+                                        R$ 0,00
+                                    {% endif %}
+                                </h4>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if troca.titulo_gerado %}
+                        <div class="alert alert-info mt-3">
+                            <strong>Título Gerado:</strong>
+                            <a href="{% url 'contas_receber' %}">Título #{{ troca.titulo_gerado.pk }}</a> em contas a receber
+                            (Status: {{ troca.titulo_gerado.get_status_display }})
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Observações -->
+            {% if troca.observacoes %}
+                <div class="card mb-4">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="mb-0">Observações</h5>
+                    </div>
+                    <div class="card-body">
+                        {{ troca.observacoes }}
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Itens da Troca -->
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Itens da Troca</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead class="table-light">
+                                <tr>
+                                    <th colspan="4" class="bg-danger text-white text-center">Equipamento Removido</th>
+                                    <th colspan="4" class="bg-success text-white text-center">Equipamento Adicionado</th>
+                                </tr>
+                                <tr>
+                                    <th>Produto</th>
+                                    <th class="text-center">Qtd</th>
+                                    <th class="text-right">Preço Unit.</th>
+                                    <th class="text-right">Total</th>
+                                    <th>Produto</th>
+                                    <th class="text-center">Qtd</th>
+                                    <th class="text-right">Preço Unit.</th>
+                                    <th class="text-right">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item_troca in itens_troca %}
+                                    <tr>
+                                        <td>
+                                            {% if item_troca.produto_removido %}
+                                                {{ item_troca.produto_removido.descricao }}
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-center">{{ item_troca.quantidade_removida }}</td>
+                                        <td class="text-right">R$ {{ item_troca.preco_removido|floatformat:2 }}</td>
+                                        <td class="text-right">
+                                            R$ {{ item_troca.quantidade_removida|mul:item_troca.preco_removido|floatformat:2 }}
+                                        </td>
+                                        <td>
+                                            {% if item_troca.produto_adicionado %}
+                                                {{ item_troca.produto_adicionado.descricao }}
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-center">{{ item_troca.quantidade_adicionada }}</td>
+                                        <td class="text-right">R$ {{ item_troca.preco_adicionado|floatformat:2 }}</td>
+                                        <td class="text-right">
+                                            R$ {{ item_troca.quantidade_adicionada|mul:item_troca.preco_adicionado|floatformat:2 }}
+                                        </td>
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="8" class="text-center text-muted">Nenhum item na troca</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botões de Ação -->
+            <div class="row mt-4">
+                <div class="col-md-12">
+                    {% if troca.status == 'pendente' %}
+                        <a href="{% url 'aprovar_troca_equipamento' troca.pk %}" class="btn btn-success" onclick="return confirm('Deseja aprovar esta troca?')">
+                            <i class="bi bi-check-circle"></i> Aprovar
+                        </a>
+                        <a href="{% url 'rejeitar_troca_equipamento' troca.pk %}" class="btn btn-danger" onclick="return confirm('Deseja rejeitar esta troca?')">
+                            <i class="bi bi-x-circle"></i> Rejeitar
+                        </a>
+                    {% endif %}
+                    
+                    {% if troca.status == 'aprovada' %}
+                        <a href="{% url 'concluir_troca_equipamento' troca.pk %}" class="btn btn-primary" onclick="return confirm('Deseja concluir esta troca?')">
+                            <i class="bi bi-check"></i> Concluir
+                        </a>
+                    {% endif %}
+                    
+                    <a href="{% url 'listar_trocas_equipamento' %}" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left"></i> Voltar
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Filtro customizado para multiplicação no template
+Handlebars.registerHelper('mul', function(a, b) {
+    return a * b;
+});
+</script>
+{% endblock %}

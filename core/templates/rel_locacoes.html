@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+{% block title %}Relatórios de Locações{% endblock %}
+
+{% block content %}
+    <div class="content" id="content">
+      <h3 class="mt-4">Relatórios de Locações</h3>
+        <form method="POST" action="{% url 'rel_locacoes' %}" class="align-items-center">
+            {% csrf_token %}
+            <div class="row">
+                <div class="form-group col-md-4">
+                    <label for="data_inicio">Data Início</label>
+                    <input class='form-control' type='date' id='id_data_inicio' placeholder="data_inicio" name='data_inicio' required>
+                </div>
+                <div class="form-group col-md-4">
+                    <label for="data_final">Data Final</label>
+                    <input class='form-control' type='date' id='id_data_final' placeholder="data_final" name='data_final' required>
+                </div>
+                <div class="form-group col-md-4">
+                    <label for="cliente">Cliente</label>
+                    <select class="form-control" id="cliente" name="cliente" data-live-search="true">
+                        <option value="todos">-- Todos --</option>
+                        {% for cliente in clientes %}
+                            <option value="{{ cliente.codigo }}">{{ cliente.razao }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="form-group col-auto">
+                    <button type="submit" name="Acao" value="incluir" id="btnSalvar" class="btn btn-lointer-salvar"><i class="bi bi-magic"></i> | Gerar </button>
+                </div>
+            </div>
+        </form><br><br>
+        {% if pdf_base64 %}
+            <div class="mb-2">
+                <iframe src="data:application/pdf;base64,{{ pdf_base64|safe }}" width="100%" height="800"></iframe>
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}

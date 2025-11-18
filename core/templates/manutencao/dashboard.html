@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard de Manutenções - Lointer{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2 class="mb-4">Dashboard de Manutenções</h2>
+
+    <div class="row text-center mb-4">
+        <div class="col-md-3">
+            <div class="card bg-light shadow-sm">
+                <div class="card-body">
+                    <h5>Total</h5>
+                    <h3><i class="bi bi-tools"></i> {{ total_manutencoes }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-light shadow-sm">
+                <div class="card-body">
+                    <h5>Concluídas</h5>
+                    <h3><i class="bi bi-hourglass-bottom"></i> {{ manutencoes_concluidas }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-light shadow-sm">
+                <div class="card-body">
+                    <h5>Em Andamento</h5>
+                    <h3><i class="bi bi-hourglass-split"></i> {{ manutencoes_pendentes }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-light shadow-sm">
+                <div class="card-body">
+                    <h5>Tempo Médio (dias)</h5>
+                    <h3><i class="bi bi-stopwatch-fill"></i> {{ tempo_medio|default:"0" }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            {{ grafico_status|safe }}
+        </div>
+        <div class="col-md-6">
+            {{ grafico_fluxos|safe }}
+        </div>
+    </div>
+
+    <!--<div class="row mt-4">
+        <div class="col-md-12">
+            {{ grafico_tempo_execucao|safe }}
+        </div>
+    </div>-->
+</div>
+{% endblock %}

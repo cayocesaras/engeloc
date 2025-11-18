@@ -59,11 +59,40 @@
                                 <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#itemModal-{{ locacao.id }}"><i class="bi bi-truck"></i> Entrega</a>
                                 <a class="dropdown-item" href="{% url 'cad_devolucao' locacao.id %}"><i class="bi bi-arrow-down-square-fill"></i> Devolução</a>
                                 <a class="dropdown-item" href="{% url 'imprimir_contrato' locacao.id %}"><i class="bi bi-pencil-square"></i> Contrato</a>
+                                <a class="dropdown-item" href="{% url 'solicitar_troca_equipamento' locacao.id %}"><i class="bi bi-pencil-square"></i> Trocas</a>
                                 <a class="dropdown-item" href="#"><i class="bi bi-upc"></i> Boleto</a>
+                                <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#renovarModal-{{ locacao.id }}"><i class="bi bi-arrow-clockwise"></i> Renovar</a>
                             </div>
                             </div>
                         </td>
                     </tr>
+
+                    <!-- Modal de Renovação -->
+                    <div class="modal fade" id="renovarModal-{{ locacao.id }}" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <form method="POST" action="{% url 'renovar_locacao' locacao.id %}">
+                                    {% csrf_token %}
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Renovar Locação {{ locacao.codigo }}</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="mb-3">
+                                            <label for="dias-{{ locacao.id }}" class="form-label">Dias a adicionar</label>
+                                            <input type="number" class="form-control" id="dias-{{ locacao.id }}" name="dias" value="{{ locacao.dias }}" min="1" required>
+                                            <div class="form-text">Informe o número de dias para estender a locação.</div>
+                                        </div>
+                                        <p class="small text-muted">Observação: não será possível renovar se houver itens com saldo pendente ou se a locação já estiver concluída.</p>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                        <button type="submit" class="btn btn-primary">Renovar</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
 
                     <div class="modal fade" id="itemModal-{{ locacao.id }}" tabindex="-1" aria-hidden="true">
                         <div class="modal-dialog">

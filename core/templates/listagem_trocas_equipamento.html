@@ -1,0 +1,145 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Trocas de Equipamentos{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <h2>Trocas de Equipamentos</h2>
+            <hr>
+
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <!-- Filtros -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="get" class="row g-3">
+                        <div class="col-md-6">
+                            <label for="status" class="form-label">Filtrar por Status:</label>
+                            <select name="status" id="status" class="form-select">
+                                <option value="">Todos</option>
+                                <option value="pendente" {% if status_filter == 'pendente' %}selected{% endif %}>Pendente</option>
+                                <option value="aprovada" {% if status_filter == 'aprovada' %}selected{% endif %}>Aprovada</option>
+                                <option value="rejeitada" {% if status_filter == 'rejeitada' %}selected{% endif %}>Rejeitada</option>
+                                <option value="concluida" {% if status_filter == 'concluida' %}selected{% endif %}>Concluída</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-search"></i> Filtrar
+                            </button>
+                            <a href="{% url 'listar_trocas_equipamento' %}" class="btn btn-secondary ms-2">
+                                <i class="bi bi-arrow-clockwise"></i> Limpar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Tabela de Trocas -->
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Lista de Trocas</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover" id="trocasTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Locação</th>
+                                    <th>Cliente</th>
+                                    <th>Data Solicitação</th>
+                                    <th>Status</th>
+                                    <th class="text-right">Valor Original</th>
+                                    <th class="text-right">Valor Novo</th>
+                                    <th class="text-right">Diferença</th>
+                                    <th class="text-center">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for troca in trocas %}
+                                    <tr>
+                                        <td><strong>#{{ troca.pk }}</strong></td>
+                                        <td>{{ troca.locacao.codigo }}</td>
+                                        <td>{{ troca.locacao.cliente.razao }}</td>
+                                        <td>{{ troca.data_solicitacao|date:'d/m/Y H:i' }}</td>
+                                        <td>
+                                            {% if troca.status == 'pendente' %}
+                                                <span class="badge bg-warning text-dark">Pendente</span>
+                                            {% elif troca.status == 'aprovada' %}
+                                                <span class="badge bg-success">Aprovada</span>
+                                            {% elif troca.status == 'rejeitada' %}
+                                                <span class="badge bg-danger">Rejeitada</span>
+                                            {% elif troca.status == 'concluida' %}
+                                                <span class="badge bg-info">Concluída</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-right">R$ {{ troca.valor_original|floatformat:2 }}</td>
+                                        <td class="text-right">R$ {{ troca.valor_novo|floatformat:2 }}</td>
+                                        <td class="text-right">
+                                            {% if troca.diferenca_valor > 0 %}
+                                                <span class="text-danger"><strong>+ R$ {{ troca.diferenca_valor|floatformat:2 }}</strong></span>
+                                            {% elif troca.diferenca_valor < 0 %}
+                                                <span class="text-success"><strong>- R$ {{ troca.diferenca_valor|floatformat:2 }}</strong></span>
+                                            {% else %}
+                                                <span>R$ 0,00</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-center">
+                                            <a href="{% url 'visualizar_troca_equipamento' troca.pk %}" class="btn btn-sm btn-info" title="Visualizar">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                            
+                                            {% if troca.status == 'pendente' %}
+                                                <a href="{% url 'aprovar_troca_equipamento' troca.pk %}" class="btn btn-sm btn-success" title="Aprovar" onclick="return confirm('Deseja aprovar esta troca?')">
+                                                    <i class="bi bi-check-circle"></i>
+                                                </a>
+                                                <a href="{% url 'rejeitar_troca_equipamento' troca.pk %}" class="btn btn-sm btn-danger" title="Rejeitar" onclick="return confirm('Deseja rejeitar esta troca?')">
+                                                    <i class="bi bi-x-circle"></i>
+                                                </a>
+                                            {% endif %}
+                                            
+                                            {% if troca.status == 'aprovada' %}
+                                                <a href="{% url 'concluir_troca_equipamento' troca.pk %}" class="btn btn-sm btn-primary" title="Concluir" onclick="return confirm('Deseja concluir esta troca?')">
+                                                    <i class="bi bi-check"></i> Concluir
+                                                </a>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="9" class="text-center text-muted">Nenhuma troca encontrada</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    $('#trocasTable').DataTable({
+        language: {
+            url: '//cdn.datatables.net/plug-ins/1.10.25/i18n/Portuguese-Brasil.json'
+        },
+        columnDefs: [
+            { orderable: false, targets: 8 }
+        ]
+    });
+});
+</script>
+{% endblock %}

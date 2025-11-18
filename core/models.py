@@ -2,6 +2,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
+from .domain.financeiro.CentroCusto import CentroCusto
 
 ### Tabelas de Cadastro ###
 
@@ -270,8 +271,11 @@ class Locacao(models.Model):
 class ItensLocacao(models.Model):
     locacao         = models.ForeignKey(Locacao, related_name='itens', on_delete=models.CASCADE)
     produto         = models.ForeignKey('CadProduto', on_delete=models.CASCADE)
+    item_estoque    = models.ForeignKey('ItensEstoque', on_delete=models.CASCADE, null=True, blank=True, verbose_name="Item de Estoque")
     quantidade      = models.PositiveIntegerField()
     preco           = models.DecimalField(max_digits=10, decimal_places=2)
+    combo           = models.ForeignKey('Combo', on_delete=models.CASCADE, null=True, blank=True, verbose_name="Combo de Equipamentos")
+    combo_preco     = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="Preço do Combo")
 
     def __str__(self):
         return f"{self.produto.descricao} x {self.quantidade}"
@@ -281,6 +285,23 @@ class ItensLocacao(models.Model):
             locacao=self.locacao, produto=self.produto
         ).aggregate(total=models.Sum('quantidade'))['total'] or 0
         return self.quantidade - entregues
+    
+    def saldo_disponivel_devolucao(self):
+        """
+        Calcula o saldo disponível para devolução:
+        Quantidade Entregue - Quantidade Já Devolvida
+        """
+        # Quantidade entregue
+        entregues = EntregaLocacao.objects.filter(
+            locacao=self.locacao, produto=self.produto
+        ).aggregate(total=models.Sum('quantidade'))['total'] or 0
+        
+        # Quantidade já devolvida
+        devolvidas = ItemDevolucao.objects.filter(
+            item_locacao=self
+        ).aggregate(total=models.Sum('quantidade'))['total'] or 0
+        
+        return entregues - devolvidas
 
     class Meta:
         db_table            = 'itens_locacao'
@@ -304,6 +325,7 @@ class ItensEstoque(models.Model):
         ('disponivel', 'Disponível'),
         ('locado', 'Locado'),
         ('manutencao', 'Em Manutenção'),
+        ('danificado', 'Danificado'),
     ]
     produto             = models.ForeignKey(CadProduto, on_delete=models.CASCADE)
     codigo              = models.CharField(max_length=20, unique=True, verbose_name="Código do Item")
@@ -335,6 +357,7 @@ class ContaCobranca(models.Model):
         ('748', '748 - Sicredi'),
         ('104', '104 - Caixa Econômica'),
         ('077', '077 - Banco Inter'),
+        ('364', '364 - EFÍ'),
         ('085', '085 - Alios'),
         ('136', '136 - UNICRED'),
         ('070', '070 - Banco Brasilia (BSB)'),
@@ -350,6 +373,9 @@ class ContaCobranca(models.Model):
     class Meta:
         db_table            = 'conta_cobranca'
         verbose_name        = 'Conta de Cobrança'
+    
+    def __str__(self):
+        return f"{self.banco}"
 
 class CondicaoCobranca(models.Model):
     codigo          = models.CharField(max_length=20, unique=True)
@@ -360,6 +386,9 @@ class CondicaoCobranca(models.Model):
     class Meta:
         db_table            = 'condicao_cobraca'
         verbose_name        = 'Condição de Cobrança'
+    
+    def __str__(self):
+        return f"{self.vencimento_dias} dias"
 
 class InstrucaoCobranca(models.Model):
     codigo          = models.CharField(max_length=20, unique=True)
@@ -371,6 +400,19 @@ class InstrucaoCobranca(models.Model):
     class Meta:
         db_table            = 'instrucao_cobranca'
         verbose_name        = 'Instrução de Cobrança'
+    
+    def __str__(self):
+        return f"{self.codigo}"
+
+class ClienteCobranca(models.Model):
+    cliente         = models.ForeignKey('CadCliente', on_delete=models.CASCADE)
+    conta           = models.ForeignKey('ContaCobranca', on_delete=models.CASCADE)
+    condicao        = models.ForeignKey('CondicaoCobranca', on_delete=models.CASCADE)
+    instrucao       = models.ForeignKey('InstrucaoCobranca', on_delete=models.CASCADE)
+
+    class Meta:
+        db_table            = 'cliente_cobranca'
+        verbose_name        = 'Relacionamento do Cliente com a Cobrança'
 
 
 class ContasReceber(models.Model):
@@ -393,6 +435,7 @@ class ContasReceber(models.Model):
         ('pix', 'Pix'),
         ('boleto', 'Boleto')
     ], default='boleto')
+    link_boleto     = models.URLField(max_length=500, blank=True, null=True)
 
     def __str__(self):
         return f"Título {self.pk} - {self.cliente.razao} - R$ {self.valor_total}"
@@ -406,21 +449,47 @@ class ContasReceber(models.Model):
 class ContasPagar(models.Model):
     STATUS_CHOICES = [
         ('pendente', 'Pendente'),
+        ('em_aprovacao', 'Em aprovação'),
         ('pago', 'Pago'),
         ('atrasado', 'Atrasado'),
         ('cancelado', 'Cancelado'),
     ]
+    
+    FORMA_PAGAMENTO_CHOICES = [
+        ('pix', 'PIX'),
+        ('transferencia', 'Transferência'),
+        ('especie', 'Espécie'),
+        ('boleto', 'Boleto'),
+        ('debito_em_conta', 'Débito em Conta'),
+    ]
+    
+    CLASSIFICACAO_DESPESA_CHOICES = [
+        ('compra', 'Compra'),
+        ('cartao_credito', 'Cartão de crédito'),
+        ('emprestimo_encargos', 'Empréstimo encargos'),
+        ('contrato_servicos', 'Contrato de serviços'),
+        ('emprestimos_bancarios', 'Empréstimos bancários'),
+        ('despesas_administrativas', 'Despesas administrativas'),
+    ]
 
-    solicitacao     = models.ForeignKey('SolicitacaoCompra', on_delete=models.CASCADE, related_name='contas_pagar')
-    fornecedor      = models.ForeignKey('CadFornecedor', on_delete=models.CASCADE)
+    solicitacao     = models.ForeignKey('SolicitacaoCompra', on_delete=models.CASCADE, related_name='contas_pagar', null=True, blank=True)
+    fornecedor      = models.ForeignKey('CadFornecedor', on_delete=models.CASCADE, null=True, blank=True)
+    centro_custo    = models.ForeignKey(CentroCusto, on_delete=models.CASCADE, verbose_name="Centro de Custo", null=True, blank=True)
     descricao       = models.CharField(max_length=200, help_text="Descrição do pagamento ou serviço")
     valor           = models.DecimalField(max_digits=12, decimal_places=2)
+    forma_pagamento = models.CharField(max_length=20, choices=FORMA_PAGAMENTO_CHOICES, verbose_name="Forma de Pagamento", blank=True, null=True)
+    quantidade_parcelas = models.IntegerField(verbose_name="Quantidade de Parcelas", default=1, help_text="Total de parcelas")
+    parcela_atual   = models.IntegerField(verbose_name="Parcela Atual", default=1, help_text="Número da parcela atual")
     data_emissao    = models.DateField(default=timezone.now)
     data_vencimento = models.DateField()
     data_pagamento  = models.DateField(blank=True, null=True)
     status          = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pendente')
     observacoes     = models.TextField(blank=True, null=True)
-    #comprovante_pagamento   = models.FileField(upload_to='comprovantes_pagamento/', blank=True, null=True)
+    anexo           = models.FileField(upload_to='contas_pagar/anexos/', blank=True, null=True, verbose_name="Anexo")
+    aprovado        = models.BooleanField(default=False, verbose_name="Aprovado")
+    comprovante     = models.FileField(upload_to='contas_pagar/comprovantes/', blank=True, null=True, verbose_name="Comprovante de Pagamento")
+    classificacao_despesa = models.CharField(max_length=30, choices=CLASSIFICACAO_DESPESA_CHOICES, verbose_name="Classificação de Despesa", blank=True, null=True)
+    recorrente      = models.BooleanField(default=False, verbose_name="Recorrente")
 
     class Meta:
         db_table            = 'contas_pagar'
@@ -429,7 +498,8 @@ class ContasPagar(models.Model):
         default_permissions = ()
 
     def __str__(self):
-        return f"{self.fornecedor} - R${self.valor} - {self.get_status_display()}"
+        fornecedor_str = self.fornecedor.razao if self.fornecedor else "Sem fornecedor"
+        return f"{fornecedor_str} - R${self.valor} - {self.get_status_display()}"
 
     class Meta:
         ordering = ['data_vencimento']
@@ -477,17 +547,11 @@ class Manutencao(models.Model):
         ('pendente', 'Pendente'),
         ('aprovado', 'Aprovado'),
     ]
-    TIPO_CHOICES = [
-        ('preventiva', 'Preventiva'),
-        ('corretiva', 'Corretiva'),
-        ('outros', 'Outros'),
-    ]
     produto     = models.ForeignKey('ItensEstoque', on_delete=models.CASCADE)
     fluxo       = models.ForeignKey(FluxoManutencao, on_delete=models.CASCADE)
     data_inicio = models.DateField(default=timezone.now)
     observacoes = models.TextField(blank=True)
     status      = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pendente')
-    tipo        = models.CharField(max_length=20, choices=TIPO_CHOICES, default='preventiva')
 
     class Meta:
         db_table            = 'manutencoes'
@@ -541,10 +605,12 @@ class Devolucao(models.Model):
     """
 
     locacao = models.ForeignKey(
-        "Locacao",
-        on_delete=models.PROTECT,
-        related_name="devolucoes",
+        'Locacao',
+        on_delete=models.CASCADE,
+        related_name='devolucoes',
         verbose_name="Locação",
+        null=True,
+        blank=True
     )
     data_devolucao = models.DateField(default=timezone.now, verbose_name="Data de devolução")
     responsavel = models.ForeignKey(
@@ -617,12 +683,27 @@ class ItemDevolucao(models.Model):
         related_name="devolucoes_item",
         verbose_name="Item da locação",
     )
+    # Item de estoque específico devolvido (quando estado não é "bom")
+    item_estoque = models.ForeignKey(
+        "ItensEstoque",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="devolucoes_item_estoque",
+        verbose_name="Item de Estoque Específico"
+    )
     quantidade = models.PositiveIntegerField(default=1)
     estado = models.CharField(max_length=12, choices=ESTADO_CHOICES, default="bom")
 
     custo_adicional = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
     encaminhado_manutencao = models.BooleanField(default=False)
     observacoes = models.TextField(blank=True)
+    
+    # Campo para foto do item
+    foto_item = models.ImageField(upload_to='devolucoes/fotos/', blank=True, null=True, verbose_name="Foto do Item")
+    
+    # Data específica de devolução deste item
+    data_devolucao = models.DateField(default=timezone.now, verbose_name="Data de Devolução")
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -633,3 +714,101 @@ class ItemDevolucao(models.Model):
 
     def __str__(self):
         return f"ItemDevolucao #{self.pk} - {self.item_locacao.produto.descricao} ({self.estado})"
+
+############################ COMBO DE EQUIPAMENTOS ############################
+class Combo(models.Model):
+    nome        = models.CharField(max_length=200)
+    descricao   = models.TextField(blank=True, null=True)
+    preco       = models.DecimalField(db_column='PRECO', max_digits=10, decimal_places=2)
+    custo       = models.BooleanField(default=False)
+
+    class Meta:
+        db_table            = 'combo'
+        verbose_name        = 'Combo de Equipamentos'
+        verbose_name_plural = 'Combos de Equipamentos'
+
+    def __str__(self):
+        return self.nome
+
+class ComboItem(models.Model):
+    combo       = models.ForeignKey(Combo, on_delete=models.CASCADE, related_name="itens")
+    produto     = models.ForeignKey(CadProduto, on_delete=models.PROTECT)
+    quantidade  = models.PositiveIntegerField()
+
+    class Meta:
+        db_table            = 'combo_item'
+        verbose_name        = 'Item do Combo'
+        verbose_name_plural = 'Itens do Combo'
+
+    def __str__(self):
+        return f"{self.quantidade}x {self.produto.descricao}"
+
+############################ TROCA DE EQUIPAMENTOS ############################
+class TrocaEquipamento(models.Model):
+    STATUS_CHOICES = [
+        ('pendente', 'Pendente'),
+        ('aprovada', 'Aprovada'),
+        ('rejeitada', 'Rejeitada'),
+        ('concluida', 'Concluída'),
+    ]
+    
+    locacao             = models.ForeignKey(Locacao, on_delete=models.CASCADE, related_name='trocas_equipamentos')
+    data_solicitacao    = models.DateTimeField(auto_now_add=True)
+    data_aprovacao      = models.DateTimeField(null=True, blank=True)
+    usuario_solicitante = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='trocas_solicitadas')
+    usuario_aprovador   = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='trocas_aprovadas')
+    status              = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pendente')
+    observacoes         = models.TextField(blank=True, null=True)
+    valor_original      = models.DecimalField(max_digits=10, decimal_places=2, help_text="Valor total da locação original")
+    valor_novo          = models.DecimalField(max_digits=10, decimal_places=2, help_text="Valor total após a troca")
+    diferenca_valor     = models.DecimalField(max_digits=10, decimal_places=2, editable=False, help_text="Diferença entre novo e original")
+    titulo_gerado       = models.ForeignKey(ContasReceber, on_delete=models.SET_NULL, null=True, blank=True, related_name='troca_equipamento')
+    
+    def save(self, *args, **kwargs):
+        # Calcula automaticamente a diferença
+        self.diferenca_valor = self.valor_novo - self.valor_original
+        super().save(*args, **kwargs)
+    
+    def __str__(self):
+        return f"Troca #{self.pk} - Locação {self.locacao.codigo} - {self.status}"
+    
+    class Meta:
+        db_table            = 'troca_equipamento'
+        verbose_name        = 'Troca de Equipamento'
+        verbose_name_plural = 'Trocas de Equipamentos'
+        ordering            = ['-data_solicitacao']
+
+class ItemTrocaEquipamento(models.Model):
+    """
+    Registra os itens que foram removidos e adicionados em uma troca
+    """
+    troca               = models.ForeignKey(TrocaEquipamento, on_delete=models.CASCADE, related_name='itens')
+    item_locacao_original = models.ForeignKey(ItensLocacao, on_delete=models.SET_NULL, null=True, blank=True, related_name='trocas_saidas')
+    
+    # Equipamento removido
+    produto_removido    = models.ForeignKey(CadProduto, on_delete=models.SET_NULL, null=True, blank=True, related_name='trocas_saidas', verbose_name="Produto Removido")
+    quantidade_removida = models.PositiveIntegerField()
+    preco_removido      = models.DecimalField(max_digits=10, decimal_places=2)
+    item_estoque_removido = models.ForeignKey(ItensEstoque, on_delete=models.SET_NULL, null=True, blank=True, related_name='trocas_saidas')
+    
+    # Equipamento adicionado
+    produto_adicionado  = models.ForeignKey(CadProduto, on_delete=models.SET_NULL, null=True, blank=True, related_name='trocas_entradas', verbose_name="Produto Adicionado")
+    quantidade_adicionada = models.PositiveIntegerField()
+    preco_adicionado    = models.DecimalField(max_digits=10, decimal_places=2)
+    item_estoque_adicionado = models.ForeignKey(ItensEstoque, on_delete=models.SET_NULL, null=True, blank=True, related_name='trocas_entradas')
+    
+    def diferenca_unitaria(self):
+        """Calcula a diferença unitária entre produto removido e adicionado"""
+        return self.preco_adicionado - self.preco_removido
+    
+    def diferenca_total(self):
+        """Calcula a diferença total para este item"""
+        return (self.preco_adicionado * self.quantidade_adicionada) - (self.preco_removido * self.quantidade_removida)
+    
+    def __str__(self):
+        return f"Troca #{self.troca.pk} - {self.produto_removido.descricao if self.produto_removido else 'N/A'} → {self.produto_adicionado.descricao if self.produto_adicionado else 'N/A'}"
+    
+    class Meta:
+        db_table            = 'item_troca_equipamento'
+        verbose_name        = 'Item de Troca de Equipamento'
+        verbose_name_plural = 'Itens de Troca de Equipamento'

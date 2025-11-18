@@ -1,0 +1,329 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - Contas a Pagar{% endblock %}
+
+{% block content %}
+<style>
+    .stat-card {
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transition: transform 0.2s;
+    }
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+    .stat-value {
+        font-size: 2.5rem;
+        font-weight: bold;
+        margin-top: 10px;
+    }
+    .stat-label {
+        font-size: 0.9rem;
+        color: #ffffff;
+        text-transform: uppercase;
+        font-weight: 500;
+    }
+    .filter-buttons {
+        margin-bottom: 30px;
+    }
+    .filter-btn {
+        margin-right: 10px;
+    }
+</style>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3>Dashboard - Contas a Pagar</h3>
+        <div class="filter-buttons">
+            <a href="?filtro=dia" class="btn btn-sm filter-btn {% if filtro == 'dia' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                <i class="bi bi-calendar-day"></i> Dia
+            </a>
+            <a href="?filtro=semana" class="btn btn-sm filter-btn {% if filtro == 'semana' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                <i class="bi bi-calendar-week"></i> Semana
+            </a>
+            <a href="?filtro=mes" class="btn btn-sm filter-btn {% if filtro == 'mes' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                <i class="bi bi-calendar-month"></i> Mês
+            </a>
+        </div>
+    </div>
+    
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> Período: <strong>{{ periodo_label }}</strong>
+    </div>
+    
+    <!-- Cards de Estatísticas Gerais -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stat-card bg-primary text-white">
+                <div class="stat-label">Total de Contas</div>
+                <div class="stat-value">{{ total_contas }}</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card bg-success text-white">
+                <div class="stat-label">Valor Total</div>
+                <div class="stat-value">R$ {{ total_valor|floatformat:2 }}</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card bg-warning text-white">
+                <div class="stat-label">Vencendo Hoje</div>
+                <div class="stat-value">{{ contas_vencendo_hoje }}</div>
+                <div class="stat-label mt-2">R$ {{ valor_vencendo_hoje|floatformat:2 }}</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card bg-danger text-white">
+                <div class="stat-label">Vencidas</div>
+                <div class="stat-value">{{ contas_vencidas }}</div>
+                <div class="stat-label mt-2">R$ {{ valor_vencidas|floatformat:2 }}</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Estatísticas por Status -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0"><i class="bi bi-bar-chart"></i> Estatísticas por Status</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-2">
+                            <div class="text-center p-3 border rounded">
+                                <div class="text-info"><strong>{{ stats_status.pendentes.quantidade }}</strong></div>
+                                <div class="small" style="color: #17a2b8; font-weight: 500;">Pendentes</div>
+                                <div class="small text-info">R$ {{ stats_status.pendentes.valor|floatformat:2 }}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <div class="text-center p-3 border rounded">
+                                <div class="text-primary"><strong>{{ stats_status.em_aprovacao.quantidade }}</strong></div>
+                                <div class="small" style="color: #007bff; font-weight: 500;">Em Aprovação</div>
+                                <div class="small text-primary">R$ {{ stats_status.em_aprovacao.valor|floatformat:2 }}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <div class="text-center p-3 border rounded">
+                                <div class="text-success"><strong>{{ stats_status.pagas.quantidade }}</strong></div>
+                                <div class="small" style="color: #28a745; font-weight: 500;">Pagas</div>
+                                <div class="small text-success">R$ {{ stats_status.pagas.valor|floatformat:2 }}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <div class="text-center p-3 border rounded">
+                                <div class="text-danger"><strong>{{ stats_status.atrasadas.quantidade }}</strong></div>
+                                <div class="small" style="color: #dc3545; font-weight: 500;">Atrasadas</div>
+                                <div class="small text-danger">R$ {{ stats_status.atrasadas.valor|floatformat:2 }}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-12 mb-2">
+                            <div class="text-center p-3 border rounded">
+                                <div class="text-secondary"><strong>{{ stats_status.canceladas.quantidade }}</strong></div>
+                                <div class="small" style="color: #6c757d; font-weight: 500;">Canceladas</div>
+                                <div class="small text-secondary">R$ {{ stats_status.canceladas.valor|floatformat:2 }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0"><i class="bi bi-pie-chart"></i> Distribuição por Status (Gráfico)</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="statusChart" style="max-height: 300px;"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Top Fornecedores e Formas de Pagamento -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0"><i class="bi bi-building"></i> Top 5 Fornecedores</h5>
+                </div>
+                <div class="card-body">
+                    {% if top_fornecedores %}
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Fornecedor</th>
+                                    <th class="text-end">Qtd</th>
+                                    <th class="text-end">Valor</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for fornecedor in top_fornecedores %}
+                                <tr>
+                                    <td>{{ fornecedor.fornecedor__razao|default:"Sem fornecedor" }}</td>
+                                    <td class="text-end">{{ fornecedor.quantidade }}</td>
+                                    <td class="text-end">R$ {{ fornecedor.total|floatformat:2 }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <p class="text-muted">Nenhum fornecedor encontrado no período.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0"><i class="bi bi-credit-card"></i> Formas de Pagamento</h5>
+                </div>
+                <div class="card-body">
+                    {% if formas_pagamento %}
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Forma</th>
+                                    <th class="text-end">Qtd</th>
+                                    <th class="text-end">Valor</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for forma, dados in formas_pagamento.items %}
+                                {% if dados.quantidade > 0 %}
+                                <tr>
+                                    <td>{{ forma }}</td>
+                                    <td class="text-end">{{ dados.quantidade }}</td>
+                                    <td class="text-end">R$ {{ dados.valor|floatformat:2 }}</td>
+                                </tr>
+                                {% endif %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <p class="text-muted">Nenhuma forma de pagamento encontrada no período.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Centros de Custo -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0"><i class="bi bi-diagram-3"></i> Distribuição por Centro de Custo</h5>
+                </div>
+                <div class="card-body">
+                    {% if centros_custo %}
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Centro de Custo</th>
+                                    <th class="text-end">Qtd</th>
+                                    <th class="text-end">Valor</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for centro in centros_custo %}
+                                <tr>
+                                    <td>{{ centro.centro_custo__descricao|default:"Sem centro de custo" }}</td>
+                                    <td class="text-end">{{ centro.quantidade }}</td>
+                                    <td class="text-end">R$ {{ centro.total|floatformat:2 }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <p class="text-muted">Nenhum centro de custo encontrado no período.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Dados do gráfico de pizza
+    const statusData = {
+        labels: ['Pendentes', 'Em Aprovação', 'Pagas', 'Atrasadas', 'Canceladas'],
+        datasets: [{
+            data: [
+                {{ stats_status.pendentes.quantidade }},
+                {{ stats_status.em_aprovacao.quantidade }},
+                {{ stats_status.pagas.quantidade }},
+                {{ stats_status.atrasadas.quantidade }},
+                {{ stats_status.canceladas.quantidade }}
+            ],
+            backgroundColor: [
+                '#17a2b8',  // info (azul claro) - Pendentes
+                '#007bff',  // primary (azul) - Em Aprovação
+                '#28a745',  // success (verde) - Pagas
+                '#dc3545',  // danger (vermelho) - Atrasadas
+                '#6c757d'   // secondary (cinza) - Canceladas
+            ],
+            borderColor: [
+                '#17a2b8',
+                '#007bff',
+                '#28a745',
+                '#dc3545',
+                '#6c757d'
+            ],
+            borderWidth: 2
+        }]
+    };
+
+    // Configuração do gráfico
+    const config = {
+        type: 'pie',
+        data: statusData,
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 15,
+                        font: {
+                            size: 12
+                        }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            const value = context.parsed || 0;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                            label += value + ' (' + percentage + '%)';
+                            return label;
+                        }
+                    }
+                }
+            }
+        }
+    };
+
+    // Criar o gráfico
+    const ctx = document.getElementById('statusChart');
+    if (ctx) {
+        new Chart(ctx, config);
+    }
+});
+</script>
+{% endblock %}
+

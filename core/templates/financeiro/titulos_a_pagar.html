@@ -5,44 +5,572 @@
 {% block content %}
 <div class="container mt-4">
     <h3 class="mb-4">Contas a Pagar</h3>
+    
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+    
+    <button type="button" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#adicionarContaModal">
+        <i class="bi bi-plus-circle"></i> Adicionar Item
+    </button>
+    
+    {% if form.errors %}
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const modal = new bootstrap.Modal(document.getElementById('adicionarContaModal'));
+                modal.show();
+            });
+        </script>
+    {% endif %}
 
         <table class="table table-bordered table-striped" id="datatable">
             <thead class="table-dark">
                 <tr>
-                    <th>ID</th>
-                    <th>Fornecedor</th>
-                    <th>Descrição</th>
-                    <th>Valor Total</th>
                     <th>Emissão</th>
                     <th>Vencimento</th>
+                    <th>Descrição</th>
+                    <th>Fornecedor</th>
+                    <th>Centro de Custo</th>
+                    <th>Forma de Pagamento</th>
+                    <th>Valor</th>
                     <th>Status</th>
-                    <th>Pagar</th>
+                    <th>Ações</th>
                 </tr>
             </thead>
+            <tfoot>
+                <tr>
+                    <th><input type="text" placeholder="Filtrar Emissão" class="form-control form-control-sm" /></th>
+                    <th><input type="text" placeholder="Filtrar Vencimento" class="form-control form-control-sm" /></th>
+                    <th><input type="text" placeholder="Filtrar Descrição" class="form-control form-control-sm" /></th>
+                    <th><input type="text" placeholder="Filtrar Fornecedor" class="form-control form-control-sm" /></th>
+                    <th><input type="text" placeholder="Filtrar Centro Custo" class="form-control form-control-sm" /></th>
+                    <th><input type="text" placeholder="Filtrar Forma Pagamento" class="form-control form-control-sm" /></th>
+                    <th><input type="text" placeholder="Filtrar Valor" class="form-control form-control-sm" /></th>
+                    <th><input type="text" placeholder="Filtrar Status" class="form-control form-control-sm" /></th>
+                    <th></th>
+                </tr>
+            </tfoot>
             <tbody>
                 {% for conta in contas %}
-                    <tr class="{% if conta.status == 'atrasado' %}table-danger{% elif conta.status == 'pago' %}table-success{% endif %}">
-                        <td>{{ conta.id }}</td>
-                        <td>{{ conta.fornecedor.razao }}</td>
-                        <td>{{ conta.descricao }}</td>
-                        <td>R$ {{ conta.valor|floatformat:2 }}</td>
+                    <tr class="{% if conta.status == 'atrasado' %}table-danger{% elif conta.status == 'pago' %}table-success{% elif conta.status == 'cancelado' %}table-secondary{% endif %}">
                         <td>{{ conta.data_emissao|date:"d/m/Y" }}</td>
                         <td>{{ conta.data_vencimento|date:"d/m/Y" }}</td>
+                        <td>{{ conta.descricao }}</td>
+                        <td>{% if conta.fornecedor %}{{ conta.fornecedor.razao }}{% else %}-{% endif %}</td>
+                        <td>{% if conta.centro_custo %}{{ conta.centro_custo.descricao }}{% else %}-{% endif %}</td>
+                        <td>{% if conta.forma_pagamento %}{{ conta.get_forma_pagamento_display }}{% else %}-{% endif %}</td>
+                        <td>R$ {{ conta.valor|floatformat:2 }}</td>
                         <td>
                             <span class="badge 
                                 {% if conta.status == 'pendente' %}bg-warning text-dark
+                                {% elif conta.status == 'em_aprovacao' %}bg-info text-white
                                 {% elif conta.status == 'pago' %}bg-success
                                 {% elif conta.status == 'atrasado' %}bg-danger
+                                {% elif conta.status == 'cancelado' %}bg-secondary
                                 {% endif %}">
                                 {{ conta.get_status_display }}
                             </span>
                         </td>
                         <td>
-                            <a href="#" class="btn btn-sm btn-success"><i class="bi bi-bag"></i></a>
+                            <div class="dropdown">
+                                <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton{{ conta.id }}" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    Ações
+                                </button>
+                                <div class="dropdown-menu" aria-labelledby="dropdownMenuButton{{ conta.id }}">
+                                    {% if conta.status == 'pendente' %}
+                                    <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#baixaPagamentoModal" data-conta-id="{{ conta.id }}" data-conta-descricao="{{ conta.descricao }}" data-conta-fornecedor="{% if conta.fornecedor %}{{ conta.fornecedor.razao }}{% else %}Sem fornecedor{% endif %}" data-conta-valor="{{ conta.valor }}" data-conta-parcela="{{ conta.parcela_atual }}/{{ conta.quantidade_parcelas }}"><i class="bi bi-receipt"></i> Baixa do Pagamento</a>
+                                    {% endif %}
+                                    {% if conta.status == 'pago' and conta.comprovante %}
+                                    <a class="dropdown-item" href="{{ conta.comprovante.url }}" target="_blank"><i class="bi bi-file-earmark-image"></i> Ver Comprovante</a>
+                                    {% endif %}
+                                    {% if conta.status != 'cancelado' %}
+                                    <a class="dropdown-item" href="#" onclick="cancelarConta({{ conta.id }})"><i class="bi bi-x-circle"></i> Cancelar</a>
+                                    {% endif %}
+                                    {% if conta.status != 'pago' and conta.status != 'cancelado' %}
+                                    <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#reagendarContaModal" data-conta-id="{{ conta.id }}" data-conta-descricao="{{ conta.descricao }}" data-conta-vencimento="{{ conta.data_vencimento|date:'Y-m-d' }}"><i class="bi bi-calendar-event"></i> Reagendar</a>
+                                    {% endif %}
+                                </div>
+                            </div>
                         </td>
                     </tr>
                 {% endfor %}
             </tbody>
         </table>
+        
+        <div class="row mt-3 mb-3">
+            <div class="col-md-4">
+                <div class="card border-warning">
+                    <div class="card-body">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-hourglass-split"></i> Pendentes
+                        </h5>
+                        <p class="card-text mt-2 mb-0">
+                            <span class="badge bg-warning text-dark me-2">{{ qtd_pendentes }}</span>
+                            <strong class="text-warning" style="font-size: 1.5rem;">R$ {{ total_pendentes|floatformat:2 }}</strong>
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-info">
+                    <div class="card-body">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-clock-history"></i> Em Aprovação
+                        </h5>
+                        <p class="card-text mt-2 mb-0">
+                            <span class="badge bg-info me-2">{{ qtd_em_aprovacao }}</span>
+                            <strong class="text-info" style="font-size: 1.5rem;">R$ {{ total_em_aprovacao|floatformat:2 }}</strong>
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-danger">
+                    <div class="card-body">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-exclamation-triangle"></i> Atrasadas
+                        </h5>
+                        <p class="card-text mt-2 mb-0">
+                            <span class="badge bg-danger me-2">{{ qtd_atrasadas }}</span>
+                            <strong class="text-danger" style="font-size: 1.5rem;">R$ {{ total_atrasadas|floatformat:2 }}</strong>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
 </div>
+
+<!-- Modal para Adicionar Conta a Pagar -->
+<div class="modal fade" id="adicionarContaModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="POST" id="form-adicionar-conta" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title">Adicionar Conta a Pagar</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    {% if form.errors %}
+                        <div class="alert alert-danger">
+                            <strong>Por favor, corrija os erros abaixo:</strong>
+                            <ul class="mb-0">
+                                {% for field, errors in form.errors.items %}
+                                    {% for error in errors %}
+                                        <li>{{ field }}: {{ error }}</li>
+                                    {% endfor %}
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% endif %}
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.solicitacao.id_for_label }}" class="form-label">
+                                {{ form.solicitacao.label }}
+                            </label>
+                            {{ form.solicitacao }}
+                            {% if form.solicitacao.help_text %}
+                                <small class="form-text text-muted">{{ form.solicitacao.help_text }}</small>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.fornecedor.id_for_label }}" class="form-label">
+                                {{ form.fornecedor.label }}
+                            </label>
+                            {{ form.fornecedor }}
+                            {% if form.fornecedor.help_text %}
+                                <small class="form-text text-muted">{{ form.fornecedor.help_text }}</small>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.centro_custo.id_for_label }}" class="form-label">
+                                {{ form.centro_custo.label }}
+                            </label>
+                            {{ form.centro_custo }}
+                            {% if form.centro_custo.help_text %}
+                                <small class="form-text text-muted">{{ form.centro_custo.help_text }}</small>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.valor.id_for_label }}" class="form-label">
+                                {{ form.valor.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.valor }}
+                            {% if form.valor.help_text %}
+                                <small class="form-text text-muted">{{ form.valor.help_text }}</small>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.forma_pagamento.id_for_label }}" class="form-label">
+                                {{ form.forma_pagamento.label }}
+                            </label>
+                            {{ form.forma_pagamento }}
+                            {% if form.forma_pagamento.help_text %}
+                                <small class="form-text text-muted">{{ form.forma_pagamento.help_text }}</small>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.quantidade_parcelas.id_for_label }}" class="form-label">
+                                {{ form.quantidade_parcelas.label }}
+                            </label>
+                            {{ form.quantidade_parcelas }}
+                            {% if form.quantidade_parcelas.help_text %}
+                                <small class="form-text text-muted">{{ form.quantidade_parcelas.help_text }}</small>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.classificacao_despesa.id_for_label }}" class="form-label">
+                                {{ form.classificacao_despesa.label }}
+                            </label>
+                            {{ form.classificacao_despesa }}
+                            {% if form.classificacao_despesa.help_text %}
+                                <small class="form-text text-muted">{{ form.classificacao_despesa.help_text }}</small>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="form-check mt-4">
+                                {{ form.recorrente }}
+                                <label class="form-check-label" for="{{ form.recorrente.id_for_label }}">
+                                    {{ form.recorrente.label }}
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.descricao.id_for_label }}" class="form-label">
+                                {{ form.descricao.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.descricao }}
+                            {% if form.descricao.help_text %}
+                                <small class="form-text text-muted">{{ form.descricao.help_text }}</small>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.status.id_for_label }}" class="form-label">
+                                {{ form.status.label }}
+                            </label>
+                            {{ form.status }}
+                            {% if form.status.help_text %}
+                                <small class="form-text text-muted">{{ form.status.help_text }}</small>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.data_emissao.id_for_label }}" class="form-label">
+                                {{ form.data_emissao.label }}
+                            </label>
+                            {{ form.data_emissao }}
+                            {% if form.data_emissao.help_text %}
+                                <small class="form-text text-muted">{{ form.data_emissao.help_text }}</small>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.data_vencimento.id_for_label }}" class="form-label">
+                                {{ form.data_vencimento.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.data_vencimento }}
+                            {% if form.data_vencimento.help_text %}
+                                <small class="form-text text-muted">{{ form.data_vencimento.help_text }}</small>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-12 mb-3">
+                            <label for="{{ form.observacoes.id_for_label }}" class="form-label">
+                                {{ form.observacoes.label }}
+                            </label>
+                            {{ form.observacoes }}
+                            {% if form.observacoes.help_text %}
+                                <small class="form-text text-muted">{{ form.observacoes.help_text }}</small>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-12 mb-3">
+                            <label for="{{ form.anexo.id_for_label }}" class="form-label">
+                                {{ form.anexo.label }}
+                            </label>
+                            {{ form.anexo }}
+                            {% if form.anexo.help_text %}
+                                <small class="form-text text-muted">{{ form.anexo.help_text }}</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Baixa do Pagamento -->
+<div class="modal fade" id="baixaPagamentoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" id="form-baixa-pagamento" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-receipt"></i> Baixa do Pagamento</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="baixa_pagamento_id" id="baixa_pagamento_id">
+                    
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Descrição:</strong></label>
+                        <p id="modal-baixa-descricao" class="form-control-plaintext"></p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Fornecedor:</strong></label>
+                        <p id="modal-baixa-fornecedor" class="form-control-plaintext"></p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Valor:</strong></label>
+                        <p id="modal-baixa-valor" class="form-control-plaintext"></p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Parcela:</strong></label>
+                        <p id="modal-baixa-parcela" class="form-control-plaintext"></p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="comprovante_baixa" class="form-label">
+                            Comprovante de Pagamento <span class="text-danger">*</span>
+                        </label>
+                        <input type="file" class="form-control" id="comprovante_baixa" name="comprovante_baixa" accept="image/*,application/pdf" required>
+                        <small class="form-text text-muted">Formatos aceitos: PDF, JPG, PNG</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle"></i> Confirmar Baixa
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Reagendar Conta a Pagar -->
+<div class="modal fade" id="reagendarContaModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" id="form-reagendar-conta">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-calendar-event"></i> Reagendar Conta</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="reagendar_conta_id" id="reagendar_conta_id">
+                    
+                    <div class="alert alert-info mb-3" role="alert">
+                        <strong><i class="bi bi-info-circle"></i> Conta:</strong>
+                        <span id="modal-conta-descricao"></span>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="nova_data_vencimento" class="form-label">
+                            Data de Vencimento <span class="text-danger">*</span>
+                        </label>
+                        <input type="date" class="form-control" id="nova_data_vencimento" name="nova_data_vencimento" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-calendar-check"></i> Confirmar Reagendamento
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Função auxiliar para obter o token CSRF
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function cancelarConta(contaId) {
+    if (confirm('Deseja realmente cancelar esta conta?')) {
+        // Cria um formulário dinamicamente e submete
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = window.location.pathname;
+        
+        // Adiciona o token CSRF
+        const csrftoken = getCookie('csrftoken');
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = csrftoken;
+        form.appendChild(csrfInput);
+        
+        // Adiciona o ID da conta a ser cancelada
+        const contaInput = document.createElement('input');
+        contaInput.type = 'hidden';
+        contaInput.name = 'cancelar_conta_id';
+        contaInput.value = contaId;
+        form.appendChild(contaInput);
+        
+        // Adiciona o formulário ao body e submete
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+// Configurar modal de baixa do pagamento quando abrir
+document.addEventListener('DOMContentLoaded', function() {
+    const baixaModal = document.getElementById('baixaPagamentoModal');
+    if (baixaModal) {
+        baixaModal.addEventListener('show.bs.modal', function(event) {
+            // Botão que acionou o modal
+            const button = event.relatedTarget;
+            
+            // Extrai dados dos atributos data-*
+            const contaId = button.getAttribute('data-conta-id');
+            const contaDescricao = button.getAttribute('data-conta-descricao');
+            const contaFornecedor = button.getAttribute('data-conta-fornecedor');
+            const contaValor = button.getAttribute('data-conta-valor');
+            const contaParcela = button.getAttribute('data-conta-parcela');
+            
+            // Preenche os campos do modal
+            document.getElementById('baixa_pagamento_id').value = contaId;
+            document.getElementById('modal-baixa-descricao').textContent = contaDescricao;
+            document.getElementById('modal-baixa-fornecedor').textContent = contaFornecedor;
+            document.getElementById('modal-baixa-valor').textContent = 'R$ ' + parseFloat(contaValor).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('modal-baixa-parcela').textContent = 'Parcela ' + contaParcela;
+        });
+        
+        // Limpar formulário quando o modal for fechado
+        baixaModal.addEventListener('hidden.bs.modal', function() {
+            document.getElementById('form-baixa-pagamento').reset();
+        });
+    }
+});
+
+// Configurar modal de reagendamento quando abrir
+document.addEventListener('DOMContentLoaded', function() {
+    const reagendarModal = document.getElementById('reagendarContaModal');
+    if (reagendarModal) {
+        reagendarModal.addEventListener('show.bs.modal', function(event) {
+            // Botão que acionou o modal
+            const button = event.relatedTarget;
+            
+            // Extrai dados dos atributos data-*
+            const contaId = button.getAttribute('data-conta-id');
+            const contaDescricao = button.getAttribute('data-conta-descricao');
+            const dataVencimento = button.getAttribute('data-conta-vencimento');
+            
+            // Preenche os campos do modal
+            document.getElementById('reagendar_conta_id').value = contaId;
+            document.getElementById('modal-conta-descricao').textContent = contaDescricao;
+            document.getElementById('nova_data_vencimento').value = dataVencimento;
+        });
+        
+        // Limpar formulário quando o modal for fechado
+        reagendarModal.addEventListener('hidden.bs.modal', function() {
+            document.getElementById('form-reagendar-conta').reset();
+        });
+    }
+});
+
+// Limpar formulário quando o modal for fechado
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('adicionarContaModal');
+    if (modal) {
+        modal.addEventListener('hidden.bs.modal', function() {
+            document.getElementById('form-adicionar-conta').reset();
+            // Resetar data de emissão para hoje
+            const hoje = new Date().toISOString().split('T')[0];
+            const dataEmissaoField = document.getElementById('id_data_emissao');
+            if (dataEmissaoField) {
+                dataEmissaoField.value = hoje;
+            }
+            // Limpar erros do formulário
+            const errorAlert = modal.querySelector('.alert-danger');
+            if (errorAlert) {
+                errorAlert.remove();
+            }
+        });
+        
+        // Definir data de emissão padrão quando o modal abrir
+        modal.addEventListener('show.bs.modal', function() {
+            const hoje = new Date().toISOString().split('T')[0];
+            const dataEmissaoField = document.getElementById('id_data_emissao');
+            if (dataEmissaoField && !dataEmissaoField.value) {
+                dataEmissaoField.value = hoje;
+            }
+        });
+    }
+});
+
+// Inicializar DataTables com filtros por coluna
+$(document).ready(function() {
+    // Aguardar um pouco para garantir que o script do base.html já executou (se houver)
+    setTimeout(function() {
+        // Destruir instância existente se houver (do base.html)
+        if ($.fn.DataTable.isDataTable('#datatable')) {
+            $('#datatable').DataTable().destroy();
+        }
+        
+        // Reinicializar a tabela para garantir que está limpa
+        var table = $('#datatable').DataTable({
+            language: {
+                "lengthMenu": "_MENU_ Registros por página",
+                "zeroRecords": "Nenhum registro encontrado",
+                "info": "Total de registros: _TOTAL_",
+                "infoEmpty": "Nenhum registro disponível",
+                "infoFiltered": "(filtrado de _MAX_ registros)",
+                "search": "Buscar:",
+                "paginate": {
+                    "first": "Primeira",
+                    "last": "Última",
+                    "next": "Próxima",
+                    "previous": "Anterior"
+                }
+            },
+            orderCellsTop: true,
+            initComplete: function () {
+                // Aplicar os filtros
+                this.api().columns().every(function () {
+                    var column = this;
+                    var footer = $(column.footer());
+                    
+                    // Pular a última coluna (Ações)
+                    if (footer.find('input').length === 0) {
+                        return;
+                    }
+                    
+                    // Aplicar filtro quando o usuário digitar
+                    footer.find('input').on('keyup change', function () {
+                        if (column.search() !== this.value) {
+                            column.search(this.value).draw();
+                        }
+                    });
+                });
+            }
+        });
+    }, 100);
+});
+</script>
 {% endblock %}

@@ -18,6 +18,35 @@
     <script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.3/dist/localization/messages_pt_BR.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.5/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Garantir que o Bootstrap está funcionando
+        document.addEventListener('DOMContentLoaded', function() {
+            // Aguardar um pouco para garantir que outros scripts carregaram
+            setTimeout(function() {
+                // Corrigir IDs duplicados apenas se necessário
+                var dropdownElements = document.querySelectorAll('.dropdown-toggle');
+                dropdownElements.forEach(function(element, index) {
+                    if (element.id === 'navbarDropdownCadastro') {
+                        element.id = 'navbarDropdownCadastro' + index;
+                        var menu = document.querySelector('[aria-labelledby="navbarDropdownCadastro"]');
+                        if (menu) {
+                            menu.setAttribute('aria-labelledby', 'navbarDropdownCadastro' + index);
+                        }
+                    }
+                });
+                
+                // Inicializar dropdowns apenas se não estiverem já inicializados
+                var dropdownElementList = [].slice.call(document.querySelectorAll('.dropdown-toggle'));
+                var dropdownList = dropdownElementList.map(function (dropdownToggleEl) {
+                    var existingDropdown = bootstrap.Dropdown.getInstance(dropdownToggleEl);
+                    if (!existingDropdown) {
+                        return new bootstrap.Dropdown(dropdownToggleEl);
+                    }
+                    return existingDropdown;
+                });
+            }, 200);
+        });
+    </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
     <script src="https://cdn.datatables.net/buttons/2.3.5/js/dataTables.buttons.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -288,7 +317,7 @@
                         <li><a class="dropdown-item" href="{% url 'clientes' %}">Cadastrar cliente</a></li>
                         <li><a class="dropdown-item" href="#">Consultar cliente</a></li>
                         <!--<li><hr class="dropdown-divider"></li>-->
-                        <li><a class="dropdown-item" href="{% url 'listagem_clientes' %}">Listagem de clientes</a></li>
+                        <li><a class="dropdown-item" href="#">Listagem de clientes</a></li>
                     </ul>
                     </li>
                     <li class="nav-item dropdown dropend">
@@ -297,13 +326,15 @@
                     </a>
                     <ul class="dropdown-menu" aria-labelledby="navbarDropdownCadastro">
                         <li><a class="dropdown-item" href="{% url 'cotacao' %}">Gerar cotação</a></li>
+                        <li><a class="dropdown-item" href="{% url 'cotacao_novo' %}">Gerar cotação 2</a></li>
                         <li><a class="dropdown-item" href="{% url 'aprovar_cotacao' %}">Aprovar cotação</a></li>
                         <!--<li><hr class="dropdown-divider"></li>-->
                         <li><a class="dropdown-item" href="{% url 'listagem_locacoes' %}">Listagem locações</a></li>
                         <li><a class="dropdown-item" href="#">Renovar locação</a></li>
-                        <li><a class="dropdown-item" href="#">Devolução de produtos</a></li>
+                        <li><a class="dropdown-item" href="{% url 'listagem_locacoes' %}">Devolução de produtos</a></li>
                         <li><a class="dropdown-item" href="#">Ressarcimento por perda/defeito</a></li>
-                        <li><a class="dropdown-item" href="#">Relatório</a></li>
+                        <li><a class="dropdown-item" href="{% url 'rel_locacoes' %}">Relatório</a></li>
+                        <li><a class="dropdown-item" href="{% url 'listar_trocas_equipamento' %}">Troca de Equipamento</a></li>
                     </ul>
                     </li>
                 </ul>
@@ -319,10 +350,13 @@
                         Estoque
                     </a>
                     <ul class="dropdown-menu" aria-labelledby="navbarDropdownCadastro">
-                        <li><a class="dropdown-item" href="{% url 'listagem_produtos' %}">Listagem de Itens do Estoque</a></li>
+                        <li><a class="dropdown-item" href="{% url 'listar_itens_estoque' %}">Listagem de Itens do Estoque</a></li>
                         <li><a class="dropdown-item" href="{% url 'saldos' %}">Saldo do Estoque</a></li>
+                        <li><a class="dropdown-item" href="{% url 'rel_saldo_produtos' %}">Relatório de Saldo do Estoque</a></li>
                         <!--<li><hr class="dropdown-divider"></li>-->
                         <li><a class="dropdown-item" href="{% url 'mov_entrada' %}">Entrada de Produto para Locação</a></li>
+                        <li><a class="dropdown-item" href="{% url 'combo_produtos' %}">Cadastrar Combo de Produtos</a></li>
+                        <li><a class="dropdown-item" href="{% url 'listagem_combo_produtos' %}">Listagem de Combos de Produtos</a></li>
                     </ul>
                     </li>
                     <li class="nav-item dropdown dropend">
@@ -357,6 +391,7 @@
                         Gestão de Manutenção
                     </a>
                     <ul class="dropdown-menu" aria-labelledby="navbarDropdownCadastro">
+                        <li><a class="dropdown-item" href="{% url 'dashboard_manutencao' %}">Dashboard</a></li>
                         <li><a class="dropdown-item" href="{% url 'manutencoes' %}">Gerar O.S.</a></li>
                         <li><a class="dropdown-item" href="{% url 'listagem_manutencao' %}">Listar todas as O.S.</a></li>
                         <li><a class="dropdown-item" href="{% url 'aprovar_manutencoes' %}">Aprovar O.S. de manutenção</a></li>
@@ -380,6 +415,8 @@
                         <li><a class="dropdown-item" href="{% url 'cad_conta_cobranca' %}">Conta</a></li>
                         <li><a class="dropdown-item" href="{% url 'cad_condicao_cobranca' %}">Condição de Cobrança</a></li>
                         <li><a class="dropdown-item" href="{% url 'cad_instrucao_cobranca' %}">Instruções de Cobrança</a></li>
+                        <li><a class="dropdown-item" href="{% url 'cad_cliente_cobranca' %}">Relacionamento Cliente x Cobrança</a></li>
+                        <li><a class="dropdown-item" href="{% url 'centro_custo' %}">Centro de Custo</a></li>
                     </ul>
                     </li>
                     <li class="nav-item dropdown dropend">
@@ -388,6 +425,9 @@
                     </a>
                     <ul class="dropdown-menu" aria-labelledby="navbarDropdownCadastro">
                         <li><a class="dropdown-item" href="{% url 'titulos_a_pagar' %}">Titulos em aberto</a></li>
+                        <li><a class="dropdown-item" href="{% url 'aprovacao_titulos_a_pagar' %}">Aprovação</a></li>
+                        <li><a class="dropdown-item" href="{% url 'mapa_compras' %}">Mapa de compras</a></li>
+                        <li><a class="dropdown-item" href="{% url 'dashboard_contas_pagar' %}">Dashboard</a></li>
                     </ul>
                     </li>
                     <li class="nav-item dropdown dropend">
@@ -405,6 +445,13 @@
                 <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownSuprimentos" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                     Sistema
                 </a>
+                <ul class="dropdown-menu" aria-labelledby="navbarDropdownSuprimentos">
+                    <li class="nav-item dropdown">
+                    <a class="dropdown-item" href="{% url 'criar_grupo_e_permissoes' %}" id="navbarDropdownCadastro" role="button">
+                        Perfis e Permissões
+                    </a>
+                    </li>
+                </ul>
                 <ul class="dropdown-menu" aria-labelledby="navbarDropdownSuprimentos">
                     <li class="nav-item dropdown">
                     <a class="dropdown-item" href="{% url 'logout' %}" id="navbarDropdownCadastro" role="button">
@@ -728,53 +775,59 @@
     });
 });
 
-// Funções relacionadas a itens de compra
-  let itens = [];
+// // Funções relacionadas a itens de compra
+//   let itens = [];
 
-  document.getElementById("btn-add-item").addEventListener("click", function() {
-    let item        = document.getElementById("item");
-    let qtd         = document.getElementById("quantidade").value;
-    let valor       = document.getElementById("valor_unitario").value;
-    let total       = qtd * valor;
+//   document.getElementById("btn-add-item").addEventListener("click", function() {
+//     let item        = document.getElementById("item");
+//     let qtd         = document.getElementById("quantidade").value;
+//     let valorElement = document.getElementById("valor_unitario");
+//     let valor       = valorElement ? valorElement.value : 0;
+//     let total       = qtd * valor;
 
-    let obj = {
-      id: item.value,
-      nome: item.options[item.selectedIndex].text,
-      quantidade: qtd,
-      valor_unitario: valor,
-      total: total
-    };
+//     let obj = {
+//       id: item.value,
+//       nome: item.options[item.selectedIndex].text,
+//       quantidade: qtd,
+//       valor_unitario: valor,
+//       total: total
+//     };
 
-    itens.push(obj);
-    atualizarTabela();
+//     itens.push(obj);
+//     atualizarTabela();
 
-    // fecha modal
-    var modal = bootstrap.Modal.getInstance(document.getElementById('itemModal'));
-    modal.hide();
-  });
+//     // fecha modal
+//     var modal = bootstrap.Modal.getInstance(document.getElementById('itemModal'));
+//     modal.hide();
+//   });
 
-  function atualizarTabela() {
-    let tbody = document.querySelector("#tabela-itens tbody");
-    tbody.innerHTML = "";
-    itens.forEach((i, index) => {
-      tbody.innerHTML += `
-        <tr>
-          <td>${i.nome}</td>
-          <td>${i.quantidade}</td>
-          <td>R$ ${i.valor_unitario}</td>
-          <td>R$ ${i.total}</td>
-          <td><button type="button" class="btn btn-danger btn-sm" onclick="removerItem(${index})"><i class="bi bi-trash"></i></button></td>
-        </tr>
-      `;
-    });
-    document.getElementById("itens_json").value = JSON.stringify(itens);
-    document.getElementById("id_valor_total").value = itens.reduce((acc, i) => acc + i.total, 0).toFixed(2).replace('.', ',');
-  }
+//   function atualizarTabela() {
+//     let tbody = document.querySelector("#tabela-itens tbody");
+//     tbody.innerHTML = "";
+//     itens.forEach((i, index) => {
+//       tbody.innerHTML += `
+//         <tr>
+//           <td>${i.nome}</td>
+//           <td>${i.quantidade}</td>
+//           <td>R$ ${i.valor_unitario}</td>
+//           <td>R$ ${i.total}</td>
+//           <td><button type="button" class="btn btn-danger btn-sm" onclick="removerItem(${index})"><i class="bi bi-trash"></i></button></td>
+//         </tr>
+//       `;
+//     });
+//     document.getElementById("itens_json").value = JSON.stringify(itens);
+    
+//     // Atualiza o valor total apenas se o elemento existir
+//     const valorTotalElement = document.getElementById("id_valor_total");
+//     if (valorTotalElement) {
+//       valorTotalElement.value = itens.reduce((acc, i) => acc + i.total, 0).toFixed(2).replace('.', ',');
+//     }
+//   }
 
-  function removerItem(index) {
-    itens.splice(index, 1);
-    atualizarTabela();
-  }
+//   function removerItem(index) {
+//     itens.splice(index, 1);
+//     atualizarTabela();
+//   }
 
     </script>
 </body>

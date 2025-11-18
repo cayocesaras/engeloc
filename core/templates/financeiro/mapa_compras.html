@@ -1,0 +1,699 @@
+{% extends 'base.html' %}
+
+{% block title %}Mapa de Compras{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h3 class="mb-4">Mapa de Compras</h3>
+    
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+        <table class="table table-bordered table-striped" id="datatable">
+            <thead class="table-dark">
+                <tr>
+                    <th>Emissão</th>
+                    <th>Vencimento</th>
+                    <th>Solicitação</th>
+                    <th>Descrição</th>
+                    <th>Fornecedor</th>
+                    <th>Centro de Custo</th>
+                    <th>Forma de Pagamento</th>
+                    <th>Valor</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tfoot>
+                <tr>
+                    <th><input type="text" placeholder="Filtrar Emissão" class="form-control form-control-sm" /></th>
+                    <th><input type="text" placeholder="Filtrar Vencimento" class="form-control form-control-sm" /></th>
+                    <th><input type="text" placeholder="Filtrar Solicitação" class="form-control form-control-sm" /></th>
+                    <th><input type="text" placeholder="Filtrar Descrição" class="form-control form-control-sm" /></th>
+                    <th><input type="text" placeholder="Filtrar Fornecedor" class="form-control form-control-sm" /></th>
+                    <th><input type="text" placeholder="Filtrar Centro Custo" class="form-control form-control-sm" /></th>
+                    <th><input type="text" placeholder="Filtrar Forma Pagamento" class="form-control form-control-sm" /></th>
+                    <th><input type="text" placeholder="Filtrar Valor" class="form-control form-control-sm" /></th>
+                    <th><input type="text" placeholder="Filtrar Status" class="form-control form-control-sm" /></th>
+                    <th></th>
+                </tr>
+            </tfoot>
+            <tbody>
+                {% for conta in contas %}
+                    <tr class="{% if conta.status == 'atrasado' %}table-danger{% elif conta.status == 'pago' %}table-success{% elif conta.status == 'cancelado' %}table-secondary{% endif %}">
+                        <td>{{ conta.data_emissao|date:"d/m/Y" }}</td>
+                        <td>{{ conta.data_vencimento|date:"d/m/Y" }}</td>
+                        <td>
+                            {% if conta.solicitacao %}
+                                <span class="badge bg-primary">{{ conta.solicitacao.codigo }}</span>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>{{ conta.descricao }}</td>
+                        <td>{% if conta.fornecedor %}{{ conta.fornecedor.razao }}{% else %}-{% endif %}</td>
+                        <td>{% if conta.centro_custo %}{{ conta.centro_custo.descricao }}{% else %}-{% endif %}</td>
+                        <td>{% if conta.forma_pagamento %}{{ conta.get_forma_pagamento_display }}{% else %}-{% endif %}</td>
+                        <td>R$ {{ conta.valor|floatformat:2 }}</td>
+                        <td>
+                            <span class="badge 
+                                {% if conta.status == 'pendente' %}bg-warning text-dark
+                                {% elif conta.status == 'em_aprovacao' %}bg-info text-white
+                                {% elif conta.status == 'pago' %}bg-success
+                                {% elif conta.status == 'atrasado' %}bg-danger
+                                {% elif conta.status == 'cancelado' %}bg-secondary
+                                {% endif %}">
+                                {{ conta.get_status_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="dropdown">
+                                <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton{{ conta.id }}" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    Ações
+                                </button>
+                                <div class="dropdown-menu" aria-labelledby="dropdownMenuButton{{ conta.id }}">
+                                    {% if conta.status == 'pendente' %}
+                                    <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#baixaPagamentoModal" data-conta-id="{{ conta.id }}" data-conta-descricao="{{ conta.descricao }}" data-conta-fornecedor="{% if conta.fornecedor %}{{ conta.fornecedor.razao }}{% else %}Sem fornecedor{% endif %}" data-conta-valor="{{ conta.valor }}" data-conta-parcela="{{ conta.parcela_atual }}/{{ conta.quantidade_parcelas }}"><i class="bi bi-receipt"></i> Baixa do Pagamento</a>
+                                    <a class="dropdown-item" href="#" onclick="cancelarConta({{ conta.id }})"><i class="bi bi-x-circle"></i> Cancelar</a>
+                                    {% endif %}
+                                    {% if conta.status == 'pago' and conta.comprovante %}
+                                    <a class="dropdown-item" href="{{ conta.comprovante.url }}" target="_blank"><i class="bi bi-file-earmark-image"></i> Ver Comprovante</a>
+                                    {% endif %}
+                                    {% if conta.status != 'cancelado' and conta.status != 'pendente' %}
+                                    <a class="dropdown-item" href="#" onclick="cancelarConta({{ conta.id }})"><i class="bi bi-x-circle"></i> Cancelar</a>
+                                    {% endif %}
+                                    {% if conta.status != 'pago' and conta.status != 'cancelado' and conta.status != 'pendente' %}
+                                    <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#reagendarContaModal" data-conta-id="{{ conta.id }}" data-conta-descricao="{{ conta.descricao }}" data-conta-vencimento="{{ conta.data_vencimento|date:'Y-m-d' }}"><i class="bi bi-calendar-event"></i> Reagendar</a>
+                                    {% endif %}
+                                    {% if conta.status != 'pago' and conta.status != 'cancelado' and conta.status != 'pendente' %}
+                                    <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#editarContaModal" 
+                                       data-conta-id="{{ conta.id }}"
+                                       data-conta-solicitacao="{% if conta.solicitacao %}{{ conta.solicitacao.id }}{% endif %}"
+                                       data-conta-fornecedor="{% if conta.fornecedor %}{{ conta.fornecedor.id }}{% endif %}"
+                                       data-conta-centro-custo="{% if conta.centro_custo %}{{ conta.centro_custo.id }}{% endif %}"
+                                       data-conta-descricao="{{ conta.descricao }}"
+                                       data-conta-valor="{{ conta.valor }}"
+                                       data-conta-forma-pagamento="{% if conta.forma_pagamento %}{{ conta.forma_pagamento }}{% endif %}"
+                                       data-conta-quantidade-parcelas="{{ conta.quantidade_parcelas }}"
+                                       data-conta-classificacao-despesa="{% if conta.classificacao_despesa %}{{ conta.classificacao_despesa }}{% endif %}"
+                                       data-conta-recorrente="{% if conta.recorrente %}true{% else %}false{% endif %}"
+                                       data-conta-status="{{ conta.status }}"
+                                       data-conta-data-emissao="{% if conta.data_emissao %}{{ conta.data_emissao|date:'Y-m-d' }}{% endif %}"
+                                       data-conta-data-vencimento="{% if conta.data_vencimento %}{{ conta.data_vencimento|date:'Y-m-d' }}{% endif %}"
+                                       data-conta-observacoes="{{ conta.observacoes|default:'' }}"><i class="bi bi-pencil"></i> Editar</a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        <div class="row mt-3 mb-3">
+            <div class="col-md-4">
+                <div class="card border-warning">
+                    <div class="card-body">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-hourglass-split"></i> Pendentes
+                        </h5>
+                        <p class="card-text mt-2 mb-0">
+                            <span class="badge bg-warning text-dark me-2">{{ qtd_pendentes }}</span>
+                            <strong class="text-warning" style="font-size: 1.5rem;">R$ {{ total_pendentes|floatformat:2 }}</strong>
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-info">
+                    <div class="card-body">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-clock-history"></i> Em Aprovação
+                        </h5>
+                        <p class="card-text mt-2 mb-0">
+                            <span class="badge bg-info me-2">{{ qtd_em_aprovacao }}</span>
+                            <strong class="text-info" style="font-size: 1.5rem;">R$ {{ total_em_aprovacao|floatformat:2 }}</strong>
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-danger">
+                    <div class="card-body">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-exclamation-triangle"></i> Atrasadas
+                        </h5>
+                        <p class="card-text mt-2 mb-0">
+                            <span class="badge bg-danger me-2">{{ qtd_atrasadas }}</span>
+                            <strong class="text-danger" style="font-size: 1.5rem;">R$ {{ total_atrasadas|floatformat:2 }}</strong>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+</div>
+
+<!-- Modal para Baixa do Pagamento -->
+<div class="modal fade" id="baixaPagamentoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" id="form-baixa-pagamento" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-receipt"></i> Baixa do Pagamento</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="baixa_pagamento_id" id="baixa_pagamento_id">
+                    
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Descrição:</strong></label>
+                        <p id="modal-baixa-descricao" class="form-control-plaintext"></p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Fornecedor:</strong></label>
+                        <p id="modal-baixa-fornecedor" class="form-control-plaintext"></p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Valor:</strong></label>
+                        <p id="modal-baixa-valor" class="form-control-plaintext"></p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Parcela:</strong></label>
+                        <p id="modal-baixa-parcela" class="form-control-plaintext"></p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="comprovante_baixa" class="form-label">
+                            Comprovante de Pagamento <span class="text-danger">*</span>
+                        </label>
+                        <input type="file" class="form-control" id="comprovante_baixa" name="comprovante_baixa" accept="image/*,application/pdf" required>
+                        <small class="form-text text-muted">Formatos aceitos: PDF, JPG, PNG</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle"></i> Confirmar Baixa
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Reagendar Conta a Pagar -->
+<div class="modal fade" id="reagendarContaModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" id="form-reagendar-conta">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-calendar-event"></i> Reagendar Conta</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="reagendar_conta_id" id="reagendar_conta_id">
+                    
+                    <div class="alert alert-info mb-3" role="alert">
+                        <strong><i class="bi bi-info-circle"></i> Conta:</strong>
+                        <span id="modal-conta-descricao"></span>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="nova_data_vencimento" class="form-label">
+                            Data de Vencimento <span class="text-danger">*</span>
+                        </label>
+                        <input type="date" class="form-control" id="nova_data_vencimento" name="nova_data_vencimento" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-calendar-check"></i> Confirmar Reagendamento
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Editar Conta a Pagar -->
+<div class="modal fade" id="editarContaModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="POST" id="form-editar-conta" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-pencil"></i> Editar Conta a Pagar</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="editar_conta_id" id="editar_conta_id">
+                    <input type="hidden" name="solicitacao" id="id_solicitacao_hidden">
+                    
+                    <div class="alert alert-info mb-3" role="alert">
+                        <strong><i class="bi bi-info-circle"></i> Nota:</strong> A solicitação de compra não pode ser alterada. Este formulário permite completar informações que não foram preenchidas automaticamente.
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="id_fornecedor_edit" class="form-label">
+                                {{ form.fornecedor.label }} <span class="text-muted">(não editável)</span>
+                            </label>
+                            <select id="id_fornecedor" class="form-select" disabled style="background-color: #e9ecef;">
+                                {% for choice in form.fornecedor.field.queryset %}
+                                    <option value="{{ choice.id }}">{{ choice.razao }}</option>
+                                {% endfor %}
+                            </select>
+                            <input type="hidden" id="id_fornecedor_hidden" name="fornecedor">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="id_centro_custo_edit" class="form-label">
+                                {{ form.centro_custo.label }}
+                            </label>
+                            {{ form.centro_custo }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="id_valor_edit" class="form-label">
+                                {{ form.valor.label }} <span class="text-danger">*</span> <span class="text-muted">(não editável)</span>
+                            </label>
+                            <input type="number" id="id_valor" name="valor" class="form-control" step="0.01" min="0" required readonly style="background-color: #e9ecef;">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="id_forma_pagamento_edit" class="form-label">
+                                {{ form.forma_pagamento.label }}
+                            </label>
+                            {{ form.forma_pagamento }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="id_quantidade_parcelas_edit" class="form-label">
+                                {{ form.quantidade_parcelas.label }}
+                            </label>
+                            {{ form.quantidade_parcelas }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="id_classificacao_despesa_edit" class="form-label">
+                                {{ form.classificacao_despesa.label }}
+                            </label>
+                            {{ form.classificacao_despesa }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="form-check mt-4">
+                                {{ form.recorrente }}
+                                <label class="form-check-label" for="{{ form.recorrente.id_for_label }}">
+                                    {{ form.recorrente.label }}
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="id_status_edit" class="form-label">
+                                {{ form.status.label }}
+                            </label>
+                            {{ form.status }}
+                        </div>
+                        <div class="col-md-12 mb-3">
+                            <label for="id_descricao_edit" class="form-label">
+                                {{ form.descricao.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.descricao }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="id_data_emissao_edit" class="form-label">
+                                {{ form.data_emissao.label }}
+                            </label>
+                            {{ form.data_emissao }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="id_data_vencimento_edit" class="form-label">
+                                {{ form.data_vencimento.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.data_vencimento }}
+                        </div>
+                        <div class="col-md-12 mb-3">
+                            <label for="id_observacoes_edit" class="form-label">
+                                {{ form.observacoes.label }}
+                            </label>
+                            {{ form.observacoes }}
+                        </div>
+                        <div class="col-md-12 mb-3">
+                            <label for="id_anexo_edit" class="form-label">
+                                {{ form.anexo.label }}
+                            </label>
+                            {{ form.anexo }}
+                            <small class="form-text text-muted">Deixe em branco para manter o anexo atual</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle"></i> Salvar Alterações
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Função auxiliar para obter o token CSRF
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function autorizarPagamento(contaId) {
+    if (confirm('Deseja autorizar o pagamento desta conta?')) {
+        // Cria um formulário dinamicamente e submete
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = window.location.pathname;
+        
+        // Adiciona o token CSRF
+        const csrftoken = getCookie('csrftoken');
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = csrftoken;
+        form.appendChild(csrfInput);
+        
+        // Adiciona o ID da conta a ser autorizada
+        const contaInput = document.createElement('input');
+        contaInput.type = 'hidden';
+        contaInput.name = 'autorizar_pagamento_id';
+        contaInput.value = contaId;
+        form.appendChild(contaInput);
+        
+        // Adiciona o formulário ao body e submete
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+function cancelarConta(contaId) {
+    if (confirm('Deseja realmente cancelar esta conta?')) {
+        // Cria um formulário dinamicamente e submete
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = window.location.pathname;
+        
+        // Adiciona o token CSRF
+        const csrftoken = getCookie('csrftoken');
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = csrftoken;
+        form.appendChild(csrfInput);
+        
+        // Adiciona o ID da conta a ser cancelada
+        const contaInput = document.createElement('input');
+        contaInput.type = 'hidden';
+        contaInput.name = 'cancelar_conta_id';
+        contaInput.value = contaId;
+        form.appendChild(contaInput);
+        
+        // Adiciona o formulário ao body e submete
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+// Configurar modal de baixa do pagamento quando abrir
+document.addEventListener('DOMContentLoaded', function() {
+    const baixaModal = document.getElementById('baixaPagamentoModal');
+    if (baixaModal) {
+        baixaModal.addEventListener('show.bs.modal', function(event) {
+            // Botão que acionou o modal
+            const button = event.relatedTarget;
+            
+            // Extrai dados dos atributos data-*
+            const contaId = button.getAttribute('data-conta-id');
+            const contaDescricao = button.getAttribute('data-conta-descricao');
+            const contaFornecedor = button.getAttribute('data-conta-fornecedor');
+            const contaValor = button.getAttribute('data-conta-valor');
+            const contaParcela = button.getAttribute('data-conta-parcela');
+            
+            // Preenche os campos do modal
+            document.getElementById('baixa_pagamento_id').value = contaId;
+            document.getElementById('modal-baixa-descricao').textContent = contaDescricao;
+            document.getElementById('modal-baixa-fornecedor').textContent = contaFornecedor;
+            document.getElementById('modal-baixa-valor').textContent = 'R$ ' + parseFloat(contaValor).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('modal-baixa-parcela').textContent = 'Parcela ' + contaParcela;
+        });
+        
+        // Limpar formulário quando o modal for fechado
+        baixaModal.addEventListener('hidden.bs.modal', function() {
+            document.getElementById('form-baixa-pagamento').reset();
+        });
+    }
+});
+
+// Configurar modal de reagendamento quando abrir
+document.addEventListener('DOMContentLoaded', function() {
+    const reagendarModal = document.getElementById('reagendarContaModal');
+    if (reagendarModal) {
+        reagendarModal.addEventListener('show.bs.modal', function(event) {
+            // Botão que acionou o modal
+            const button = event.relatedTarget;
+            
+            // Extrai dados dos atributos data-*
+            const contaId = button.getAttribute('data-conta-id');
+            const contaDescricao = button.getAttribute('data-conta-descricao');
+            const dataVencimento = button.getAttribute('data-conta-vencimento');
+            
+            // Preenche os campos do modal
+            document.getElementById('reagendar_conta_id').value = contaId;
+            document.getElementById('modal-conta-descricao').textContent = contaDescricao;
+            document.getElementById('nova_data_vencimento').value = dataVencimento;
+        });
+        
+        // Limpar formulário quando o modal for fechado
+        reagendarModal.addEventListener('hidden.bs.modal', function() {
+            document.getElementById('form-reagendar-conta').reset();
+        });
+    }
+});
+
+// Configurar modal de edição quando abrir
+document.addEventListener('DOMContentLoaded', function() {
+    const editarModal = document.getElementById('editarContaModal');
+    if (editarModal) {
+        let dadosConta = {};
+        
+        // Armazena os dados quando o modal começa a abrir
+        editarModal.addEventListener('show.bs.modal', function(event) {
+            const button = event.relatedTarget;
+            dadosConta = {
+                id: button.getAttribute('data-conta-id'),
+                solicitacao: button.getAttribute('data-conta-solicitacao'),
+                fornecedor: button.getAttribute('data-conta-fornecedor'),
+                centroCusto: button.getAttribute('data-conta-centro-custo'),
+                descricao: button.getAttribute('data-conta-descricao'),
+                valor: button.getAttribute('data-conta-valor') || '',
+                formaPagamento: button.getAttribute('data-conta-forma-pagamento'),
+                quantidadeParcelas: button.getAttribute('data-conta-quantidade-parcelas'),
+                classificacaoDespesa: button.getAttribute('data-conta-classificacao-despesa'),
+                recorrente: button.getAttribute('data-conta-recorrente'),
+                status: button.getAttribute('data-conta-status'),
+                dataEmissao: button.getAttribute('data-conta-data-emissao'),
+                dataVencimento: button.getAttribute('data-conta-data-vencimento'),
+                observacoes: button.getAttribute('data-conta-observacoes')
+            };
+        });
+        
+        // Preenche os campos quando o modal está totalmente renderizado
+        editarModal.addEventListener('shown.bs.modal', function(event) {
+            const contaId = dadosConta.id;
+            const contaFornecedor = dadosConta.fornecedor;
+            const contaCentroCusto = dadosConta.centroCusto;
+            const contaDescricao = dadosConta.descricao;
+            const contaValor = dadosConta.valor;
+            const contaFormaPagamento = dadosConta.formaPagamento;
+            const contaQuantidadeParcelas = dadosConta.quantidadeParcelas;
+            const contaClassificacaoDespesa = dadosConta.classificacaoDespesa;
+            const contaRecorrente = dadosConta.recorrente;
+            const contaStatus = dadosConta.status;
+            const contaDataEmissao = dadosConta.dataEmissao;
+            const contaDataVencimento = dadosConta.dataVencimento;
+            const contaObservacoes = dadosConta.observacoes;
+            
+            // Preenche os campos do modal
+            document.getElementById('editar_conta_id').value = contaId;
+            
+            // Preenche solicitação (campo hidden) - sempre mantém a solicitação original
+            const solicitacaoHidden = document.getElementById('id_solicitacao_hidden');
+            if (solicitacaoHidden && dadosConta.solicitacao) {
+                solicitacaoHidden.value = dadosConta.solicitacao;
+            }
+            
+            // Preenche fornecedor (campo desabilitado) e o campo hidden
+            if (contaFornecedor) {
+                const fornecedorSelect = document.getElementById('id_fornecedor');
+                const fornecedorHidden = document.getElementById('id_fornecedor_hidden');
+                if (fornecedorSelect) {
+                    fornecedorSelect.value = contaFornecedor;
+                }
+                if (fornecedorHidden) {
+                    fornecedorHidden.value = contaFornecedor;
+                }
+            }
+            
+            if (contaCentroCusto) {
+                const centroCustoField = document.getElementById('id_centro_custo');
+                if (centroCustoField) {
+                    centroCustoField.value = contaCentroCusto;
+                }
+            }
+            
+            if (contaDescricao) {
+                const descricaoField = document.getElementById('id_descricao');
+                if (descricaoField) {
+                    descricaoField.value = contaDescricao;
+                }
+            }
+            
+            // Preenche valor (campo readonly) - sempre preenche automaticamente
+            const valorField = document.getElementById('id_valor');
+            if (valorField) {
+                // Converte e formata o valor
+                if (contaValor && contaValor !== 'None' && contaValor !== '') {
+                    // Remove possíveis formatações (vírgulas, pontos, etc)
+                    const valorLimpo = contaValor.toString().replace(',', '.').replace(/[^\d.-]/g, '');
+                    const valorNumerico = parseFloat(valorLimpo);
+                    if (!isNaN(valorNumerico) && isFinite(valorNumerico)) {
+                        valorField.value = valorNumerico.toFixed(2);
+                    } else {
+                        valorField.value = contaValor;
+                    }
+                } else {
+                    // Se não houver valor, deixa vazio
+                    valorField.value = '';
+                }
+            }
+            
+            if (contaFormaPagamento) {
+                document.getElementById('id_forma_pagamento').value = contaFormaPagamento;
+            }
+            
+            if (contaQuantidadeParcelas) {
+                document.getElementById('id_quantidade_parcelas').value = contaQuantidadeParcelas;
+            }
+            
+            if (contaClassificacaoDespesa) {
+                document.getElementById('id_classificacao_despesa').value = contaClassificacaoDespesa;
+            }
+            
+            if (contaRecorrente === 'true') {
+                document.getElementById('id_recorrente').checked = true;
+            } else {
+                document.getElementById('id_recorrente').checked = false;
+            }
+            
+            if (contaStatus) {
+                document.getElementById('id_status').value = contaStatus;
+            }
+            
+            if (contaDataEmissao) {
+                document.getElementById('id_data_emissao').value = contaDataEmissao;
+            }
+            
+            if (contaDataVencimento) {
+                document.getElementById('id_data_vencimento').value = contaDataVencimento;
+            }
+            
+            if (contaObservacoes) {
+                document.getElementById('id_observacoes').value = contaObservacoes;
+            }
+        });
+        
+        // Limpar formulário quando o modal for fechado
+        editarModal.addEventListener('hidden.bs.modal', function() {
+            document.getElementById('form-editar-conta').reset();
+        });
+        
+        // Garantir que o valor do fornecedor seja enviado no formulário
+        const formEditar = document.getElementById('form-editar-conta');
+        if (formEditar) {
+            formEditar.addEventListener('submit', function(e) {
+                // Copia o valor do select desabilitado para o campo hidden antes de enviar
+                const fornecedorSelect = document.getElementById('id_fornecedor');
+                const fornecedorHidden = document.getElementById('id_fornecedor_hidden');
+                if (fornecedorSelect && fornecedorHidden) {
+                    fornecedorHidden.value = fornecedorSelect.value;
+                }
+            });
+        }
+    }
+});
+
+// Inicializar DataTables com filtros por coluna
+$(document).ready(function() {
+    // Aguardar um pouco para garantir que o script do base.html já executou (se houver)
+    setTimeout(function() {
+        // Destruir instância existente se houver (do base.html)
+        if ($.fn.DataTable.isDataTable('#datatable')) {
+            $('#datatable').DataTable().destroy();
+        }
+        
+        // Reinicializar a tabela para garantir que está limpa
+        var table = $('#datatable').DataTable({
+            language: {
+                "lengthMenu": "_MENU_ Registros por página",
+                "zeroRecords": "Nenhum registro encontrado",
+                "info": "Total de registros: _TOTAL_",
+                "infoEmpty": "Nenhum registro disponível",
+                "infoFiltered": "(filtrado de _MAX_ registros)",
+                "search": "Buscar:",
+                "paginate": {
+                    "first": "Primeira",
+                    "last": "Última",
+                    "next": "Próxima",
+                    "previous": "Anterior"
+                }
+            },
+            orderCellsTop: true,
+            initComplete: function () {
+                // Aplicar os filtros
+                this.api().columns().every(function () {
+                    var column = this;
+                    var footer = $(column.footer());
+                    
+                    // Pular a última coluna (Ações)
+                    if (footer.find('input').length === 0) {
+                        return;
+                    }
+                    
+                    // Aplicar filtro quando o usuário digitar
+                    footer.find('input').on('keyup change', function () {
+                        if (column.search() !== this.value) {
+                            column.search(this.value).draw();
+                        }
+                    });
+                });
+            }
+        });
+    }, 100);
+});
+</script>
+{% endblock %}
+

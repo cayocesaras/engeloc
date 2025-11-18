@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+
+{% block title %}Combos de Produtos{% endblock %}
+
+{% block content %}
+<div class="content" id="content">
+  <h3 class="mt-4">Lista de Combos de Produtos</h3>
+  <hr>
+
+  <div class="table-responsive">
+    <table id="tabela-cautelas" class="table table-striped table-bordered">
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Itens</th>
+          <th>Preço</th>
+          <th>Excluir</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for combo in combos %}
+        <tr>
+          <td>{{ combo.nome }}</td>
+          <td>
+              <ul>
+              {% for item in combo.itens.all %}
+                  <li><b>Item:</b> {{ item.produto.descricao }} | 
+                      <b>Quantidade:</b> {{ item.quantidade }}
+                  </li>
+              {% endfor %}
+              </ul>
+          </td>
+          <td>R$ {{ combo.preco|floatformat:2 }}</td>
+          <td>
+            <form method="POST" action="{% url 'excluir_combo' combo.id %}">
+                {% csrf_token %}
+                <button type="submit" name="Acao" value="excluir" class="btn btn-sm btn-danger" 
+                        onclick="return confirm('Tem certeza que deseja excluir este combo de produto?');">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Script para DataTables -->
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    new DataTable('#tabela-cautelas', {
+      language: {
+        url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/pt-BR.json',
+      },
+      pageLength: 10,
+      ordering: true,
+    });
+  });
+</script>
+{% endblock %}

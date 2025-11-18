@@ -1,0 +1,331 @@
+{% extends 'base.html' %}
+
+{% block title %}Cotação de Produtos{% endblock %}
+
+{% block content %}
+    <div class="content" id="content">
+      <h3 class="mt-4">Nova Cotação</h3>
+        <form method="POST" id="form-solicitacao">
+        {% csrf_token %}
+
+        <!-- Campos do cabeçalho -->
+
+        <div class="row">
+                {% for field in form %}
+                <div class="col-md-4 mb-2 form-floating">
+                    {{ field }}
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                </div>
+                {% endfor %}
+        </div>
+
+        <hr>
+
+        <!-- Botão para abrir modal -->
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#itemModal">
+            <i class="bi bi-plus-circle"></i> Adicionar Produto
+        </button>
+
+        <!-- Botão para abrir modal -->
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#comboModal">
+            <i class="bi bi-plus-circle"></i> Adicionar Combo
+        </button>
+
+        <br><br>
+
+        <!-- Tabela de itens -->
+            <div class="tab-content table-responsive" id="myTabContent">
+                <div class="tab-pane fade show active" id="home-tab-pane" role="tabpanel" aria-labelledby="home-tab" tabindex="0">
+                    <table id="tabela-itens" class="table table-striped table-bordered">
+                    <thead>
+                    <tr>
+                        <th>Produto</th>
+                        <th>Quantidade</th>
+                        <th>Valor Unitário</th>
+                        <th>Total</th>
+                        <th>Ações</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+
+        <!-- Campo escondido para enviar os itens em JSON -->
+        <input type="hidden" name="itens_json" id="itens_json">
+
+        <button type="submit" class="btn btn-success"><i class="bi bi-floppy"></i> Salvar Solicitação</button>
+        </form>
+
+<!-- Modal de adicionar item -->
+<div class="modal fade" id="itemModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Adicionar Item</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label>Produto</label>
+          <select id="id_produto" class="form-control">
+              <option value="" disabled selected>Selecione um produto</option>
+            {% for i in itens %}
+              <option value="{{ i.codigo }}">{{ i.descricao }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="mb-3">
+          <label>Quantidade <strong style="color: red" id="id_saldo"></strong></label>
+          <input type="number" id="id_quantidade" class="form-control" min="1">
+        </div>
+        <div class="mb-3">
+          <label>Preço (R$)</label>
+          <input type="text" id="id_valor_unitario" class="form-control" data-mask="money" readonly>
+        </div>
+        <div class="mb-3">
+          <label>Valor Total (R$)</label>
+          <input type="text" id="id_valor_total" class="form-control" data-mask="money" readonly>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="btn-add-item">Adicionar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de adicionar combo -->
+<div class="modal fade" id="comboModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Adicionar Combo</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+
+        <div class="mb-3">
+          <label>Combo</label>
+          <select id="id_combo" class="form-control">
+              <option value="" disabled selected>Selecione um combo</option>
+            {% for combo in combos %}
+              <option value="{{ combo.id }}">{{ combo.nome }} - R$ {{ combo.preco|floatformat:2 }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- AQUI os itens do combo serão preenchidos via JS -->
+        <div id="combo_itens_container"></div>
+
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="btn-add-combo">Adicionar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+   let itens = [];
+
+   document.getElementById("btn-add-item").addEventListener("click", function() {
+     let item        = document.getElementById("id_produto");
+     let qtd         = document.getElementById("id_quantidade").value;
+     let preco       = document.getElementById("id_valor_unitario").value;
+
+     let obj = {
+       id: item.value,
+       nome: item.options[item.selectedIndex].text,
+       quantidade: qtd,
+       preco: parseFloat(preco.replace(',', '.')),
+       total: parseFloat((qtd * preco).toFixed(2).replace(',', '.')),
+       combo_id: null,
+       group: null,
+       group_name: null,
+     };
+
+     itens.push(obj);
+     atualizarTabela();
+
+     // fecha modal
+     var modal = bootstrap.Modal.getInstance(document.getElementById('itemModal'));
+     modal.hide();
+   });
+
+   let valor_total = 0;
+function atualizarTabela() {
+    let tbody = document.querySelector("#tabela-itens tbody");
+    tbody.innerHTML = "";
+
+    let grupos_exibidos = new Set();
+
+    itens.forEach((i, index) => {
+
+        if (i.group && !grupos_exibidos.has(i.group)) {
+            grupos_exibidos.add(i.group);
+
+            tbody.innerHTML += `
+                <tr class="table-secondary fw-bold">
+                    <td colspan="3">Combo: ${i.group_name}</td>
+                    <td>R$ ${i.group_valor ? i.group_valor : "0.00"}</td>
+                    <td>
+                        <button type="button" class="btn btn-danger btn-sm" onclick="removerCombo('${i.group}')">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }
+
+        tbody.innerHTML += `
+            <tr>
+                <td>
+                    ${i.group ? "<i class='bi bi-link-45deg text-primary'></i>" : ""}
+                    ${i.nome}
+                </td>
+                <td>${i.quantidade}</td>
+                <td>${i.preco.toFixed(2)}</td>
+                <td>${i.total.toFixed(2)}</td>
+                <td>
+                    ${
+                        i.group
+                            ? "" // não mostra o botão se for item do combo
+                            : `<button type="button" class="btn btn-danger btn-sm" onclick="removerItem(${index})">
+                                <i class="bi bi-trash"></i>
+                              </button>`
+                    }
+                </td>
+            </tr>
+        `;
+    });
+
+     // Atualiza o valor total apenas se o elemento existir
+     const valorTotalElement = document.getElementById("id_total");
+     if (valorTotalElement) {
+        let totalCotacao = 0;
+        let combosSomados = new Set();
+
+        itens.forEach(i => {
+            if (i.group) {
+                // Só soma o valor do combo uma vez
+                if (!combosSomados.has(i.group)) {
+                    combosSomados.add(i.group);
+                    totalCotacao += parseFloat(i.group_valor);
+                }
+            } else {
+                totalCotacao += i.total;
+            }
+        });
+
+        valorTotalElement.value = totalCotacao.toFixed(2).replace('.', ',');
+
+     }
+
+    document.getElementById("itens_json").value = JSON.stringify(itens);
+}
+
+    function removerCombo(group) {
+        itens = itens.filter(i => i.group !== group); // Remove todos do grupo
+        atualizarTabela();
+    }
+
+
+   function removerItem(index) {
+     itens.splice(index, 1);
+     atualizarTabela();
+   }
+
+   // Pegando o preço do produto selecionado
+   $("#id_produto").change(function() {
+      let item = $(this).val();
+      $.get("{% url 'saldo_estoque_produto_item' %}", { produto_id: item }, function(data, status) {
+          const id_valor_unitario = document.getElementById("id_valor_unitario");
+          const id_saldo          = document.getElementById("id_saldo");
+          id_valor_unitario.value = data.preco
+          id_saldo.innerText      = " | Saldo em estoque: " + data.saldo;
+          $("#id_quantidade").val(1);
+          $("#id_quantidade").attr("max", data.saldo);
+          $("#id_valor_total").val(data.preco);
+      });
+   });
+
+   $("#id_custo").change(function() {
+       if($(this).is(":checked")) {
+           $("#id_preco").attr("disabled", true);
+       } else {
+           $("#id_preco").attr("disabled", false);
+       }
+   });
+
+   // Quando muda o combo, busca os itens
+$("#id_combo").change(function() {
+    let combo_id = $(this).val();
+
+    $.get("{% url 'get_combo_itens' %}", { combo_id: combo_id }, function(data) {
+
+        let container = $("#combo_itens_container");
+        container.html(""); // limpa antes
+
+        data.itens.forEach(item => {
+            container.append(`
+                <div class="row mb-2 combo-item" data-combo-valor="${item.combo_valor}">
+                    <input type="hidden" class="combo_produto_id" value="${item.codigo}">
+                    <div class="col-md-6">
+                        <label>Produto</label>
+                        <input type="text" class="form-control" value="${item.produto}" disabled>
+                    </div>
+                    <div class="col-md-2">
+                        <label>Quantidade</label>
+                        <input type="number" class="form-control combo_quantidade" value="${item.quantidade}" readonly>
+                    </div>
+                    <div class="col-md-2">
+                        <label>Preço Unitário</label>
+                        <input type="text" class="form-control combo_preco" value="0.00" readonly>
+                    </div>
+                    <div class="col-md-2">
+                        <label>Total</label>
+                        <input type="text" class="form-control combo_total" value="0.00" readonly>
+                    </div>
+                </div>
+            `);
+        });
+    });
+});
+
+$("#btn-add-combo").click(function() {
+
+    let combo_nome  = $("#id_combo option:selected").text();
+    let combo_id    = $("#id_combo option:selected").val();
+    let combo_group = "combo_" + Date.now(); // identificador único
+    let combo_valor = 0;
+
+    $("#combo_itens_container .combo-item").each(function() {
+
+        let produto_id = $(this).find(".combo_produto_id").val();
+        let quantidade = $(this).find(".combo_quantidade").val();
+        let preco      = $(this).find(".combo_preco").val();
+        let total      = (parseFloat(preco) * quantidade).toFixed(2);
+        combo_valor    = $(this).data("combo-valor") || combo_valor;
+
+        itens.push({
+            id: produto_id,
+            nome: $(this).find("input[type=text]").val(),
+            quantidade: quantidade,
+            preco: parseFloat(preco),
+            total: parseFloat(total),
+            combo_id: combo_id,
+            group: combo_group,
+            group_name: combo_nome,
+            group_valor: combo_valor,
+        });
+
+    });
+
+    atualizarTabela();
+    bootstrap.Modal.getInstance(document.getElementById('comboModal')).hide();
+});
+</script>
+{% endblock %}

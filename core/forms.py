@@ -4,6 +4,12 @@ from .models import CadEmpresa, CadCliente, CadFornecedor, CadGrupoProduto, CadU
 from .models import Movimentacoes, ItensEstoque, ItensLocacao, Locacao, ItensSolicitacaoCompra
 from .models import Manutencao
 from .models import RelacaoItemProduto
+from .models import ClienteCobranca
+from .models import Combo
+from .models import ComboItem
+from .models import ContasPagar
+from .models import TrocaEquipamento, ItemTrocaEquipamento
+from .domain.financeiro.CentroCusto import CentroCusto
 
 ESTADOS_BRASIL = [
     ('', 'Escolha um Estado'), ('AC', 'Acre'), ('AL', 'Alagoas'), ('AP', 'Amapá'), ('AM', 'Amazonas'),
@@ -18,12 +24,12 @@ ESTADOS_BRASIL = [
 class CadEmpresaForm(forms.ModelForm):
 
     # Campos obrigatórios
-    codigo          = forms.CharField(required=True, label='Código', widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Codigo', 'id': 'id_codigo', 'maxlength': 10}))
-    cnpj            = forms.CharField(required=True, label='CNPJ', widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'CNPJ', 'data-mask': '00.000.000/0000-00', 'id': 'id_cnpj'}))
-    razao           = forms.CharField(required=True, label='Razão Social', widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Razão Social', 'id': 'id_razao'}))
+    codigo          = forms.CharField(required=True,   label='Código', widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Codigo', 'id': 'id_codigo', 'maxlength': 10}))
+    cnpj            = forms.CharField(required=True,   label='CNPJ', widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'CNPJ', 'data-mask': '00.000.000/0000-00', 'id': 'id_cnpj'}))
+    razao           = forms.CharField(required=True,   label='Razão Social', widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Razão Social', 'id': 'id_razao'}))
     uf              = forms.ChoiceField(required=True, label='UF', choices=ESTADOS_BRASIL, widget=forms.Select(attrs={'class': 'form-control', 'id': 'id_uf'}))
-    cidade          = forms.CharField(required=True, label='Cidade', widget=forms.Select(attrs={'class': 'form-control', 'id': 'id_cidade'}))
-    email           = forms.EmailField(required=True, label='E-mail', widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'E-mail'}))
+    cidade          = forms.CharField(required=True,   label='Cidade', widget=forms.Select(attrs={'class': 'form-control', 'id': 'id_cidade'}))
+    email           = forms.EmailField(required=True,  label='E-mail', widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'E-mail'}))
 
     # Campos opcionais
     fantasia        = forms.CharField(required=False, label='Fantasía', widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Fantasia', 'id': 'id_fantasia'}))
@@ -89,16 +95,16 @@ class CadFornecedorForm(forms.ModelForm):
     ]
 
     # Campos obrigatórios
-    codigo          = forms.CharField(required=True, widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder':'Código', 'id': 'id_codigo', 'maxlength': 10}))
-    tipo            = forms.ChoiceField(required=True, choices=[('','Tipo'),('Jurídica','Jurídica'),('Física','Física')], widget=forms.Select(attrs={'class': 'form-control', 'id': 'id_tipo'}))
+    codigo          = forms.CharField(required=True, label='Código', widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder':'Código', 'id': 'id_codigo', 'maxlength': 10}))
+    tipo            = forms.ChoiceField(required=True, label='Tipo', choices=[('','Tipo'),('Jurídica','Jurídica'),('Física','Física')], widget=forms.Select(attrs={'class': 'form-control', 'id': 'id_tipo'}))
     cnpj_cpf        = forms.CharField(required=True, label='CNPJ/CPF', widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder':'CNPJ/CPF', 'id': 'id_cnpj_cpf'}))
-    razao           = forms.CharField(required=True, widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder':'Razão Social', 'id': 'id_razao'}))
-    uf              = forms.ChoiceField(required=True, choices=ESTADOS_BRASIL, widget=forms.Select(attrs={'class': 'form-control', 'placeholder': 'UF', 'id': 'id_uf'}))
-    cidade          = forms.CharField(required=True, widget=forms.Select(attrs={'class': 'form-control', 'placeholder':'Cidade', 'id': 'id_cidade'}))
-    email           = forms.EmailField(required=True, widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder':'E-mail',}))
+    razao           = forms.CharField(required=True, label='Razão', widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder':'Razão Social', 'id': 'id_razao'}))
+    uf              = forms.ChoiceField(required=True, label='UF', choices=ESTADOS_BRASIL, widget=forms.Select(attrs={'class': 'form-control', 'placeholder': 'UF', 'id': 'id_uf'}))
+    cidade          = forms.CharField(required=True, label='Cidade', widget=forms.Select(attrs={'class': 'form-control', 'placeholder':'Cidade', 'id': 'id_cidade'}))
+    email           = forms.EmailField(required=True, label='E-mail', widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder':'E-mail',}))
 
     # Campos opcionais
-    fantasia        = forms.CharField(required=False, widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder':'Fantasia', 'id': 'id_fantasia'}))
+    fantasia        = forms.CharField(required=False, widget=forms.TextInput(attrs={'class': 'form-control', 'id': 'id_fantasia'}))
     estadual        = forms.CharField(required=False, widget=forms.TextInput(attrs={'class': 'form-control','placeholder':'Estadual', 'id': 'id_estadual'}))
     municipal       = forms.CharField(required=False, widget=forms.TextInput(attrs={'class': 'form-control','placeholder':'Municipal', 'id': 'id_municipal'}))
     suframa         = forms.CharField(required=False, widget=forms.TextInput(attrs={'class': 'form-control','placeholder':'Suframa', 'id': 'id_suframa'}))
@@ -115,7 +121,7 @@ class CadFornecedorForm(forms.ModelForm):
     
 class CadGrupoProdutoForm(forms.ModelForm):
     codigo          = forms.CharField(required=True, widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder':'Código', 'id': 'id_codigo', 'maxlength': 10}))
-    descricao       = forms.CharField(required=True, widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder':'Descrição', 'id': 'id_descricao'}))
+    descricao       = forms.CharField(required=True, label='Descrição', widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder':'', 'id': 'id_descricao'}))
 
     class Meta:
         model = CadGrupoProduto
@@ -132,23 +138,22 @@ class CadUnidadeMedidaForm(forms.ModelForm):
 class CadItemForm(forms.ModelForm):
     class Meta:
         model = CadItem
-        fields = ['codigo', 'descricao', 'unidade']  # Removido 'quantidade'
+        fields = ['codigo', 'descricao', 'unidade']
+        labels = {
+            'codigo': 'Código',
+            'descricao': 'Descrição',
+            'unidade': 'Unidade de Medida',
+        }
         widgets = {
-            'codigo': forms.TextInput(attrs={'class': 'form-control'}),
-            'descricao': forms.TextInput(attrs={'class': 'form-control'}),
-            'unidade': forms.Select(attrs={'class': 'form-control'}),
+            'codigo':       forms.TextInput(attrs={'class': 'form-control'}),
+            'descricao':    forms.TextInput(attrs={'class': 'form-control'}),
+            'unidade':      forms.Select(attrs={'class': 'form-control'}),
         }
 
-from django import forms
-from django.contrib.auth.models import User
 from .models import SolicitacaoCompra, CadFornecedor
 
 class SolicitacaoCompraForm(forms.ModelForm):
-    fornecedor = forms.ModelChoiceField(
-        queryset=CadFornecedor.objects.all(),
-        empty_label="Selecione um fornecedor",
-        widget=forms.Select(attrs={'class': 'form-control', 'id': 'id_fornecedor'})
-    )
+    fornecedor = forms.ModelChoiceField(queryset=CadFornecedor.objects.all(), empty_label="Selecione um fornecedor", widget=forms.Select(attrs={'class': 'form-control', 'id': 'id_fornecedor'}))
 
     valor_total = forms.CharField(
         required=True,
@@ -181,6 +186,10 @@ class SolicitacaoCompraForm(forms.ModelForm):
     class Meta:
         model = SolicitacaoCompra
         fields = ['codigo', 'fornecedor', 'data_solicitacao', 'justificativa', 'valor_total']
+        labels = {
+            'codigo':           'Código',
+            'data_solicitacao': 'Data da Solicitação',
+        }
         widgets = {
             'codigo': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Código da solicitação', 'id': 'id_codigo'}),
             'data_solicitacao': forms.DateInput(attrs={'class': 'form-control', 'type': 'date', 'id': 'id_data'}),
@@ -556,14 +565,9 @@ class ManutencaoForm(forms.ModelForm):
         widget=forms.Select(attrs={'class': 'form-control produto-select', 'id': 'id_fluxo'}),
         empty_label="Selecione o produto"
     )
-    tipo = forms.ChoiceField(
-        required=True,
-        choices=[('preventiva', 'Preventiva'),('corretiva', 'Corretiva'),('outros', 'Outros')],
-        widget=forms.Select(attrs={'class': 'form-control', 'id': 'id_tipo'})
-    )
     class Meta:
         model = Manutencao
-        fields = ['id','fluxo', 'produto', 'data_inicio', 'observacoes','tipo']
+        fields = ['id','fluxo', 'produto', 'data_inicio', 'observacoes']
         widgets = {
             'produto': forms.Select(attrs={'class': 'form-control'}),
             'observacoes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
@@ -646,6 +650,33 @@ class InstrucaoCobrancaForm(forms.ModelForm):
             'local_pagamento':  forms.TextInput(attrs={'class': 'form-control', 'maxlength': 200}),
         }
 
+class ClienteCobrancaForm(forms.ModelForm):
+    cliente = forms.ModelChoiceField(
+        queryset=CadCliente.objects.all(),
+        widget=forms.Select(attrs={'class': 'form-control cliente-select', 'id': 'cliente'}),
+        empty_label="Selecione o cliente"
+    )
+    conta = forms.ModelChoiceField(
+        queryset=ContaCobranca.objects.all(),
+        widget=forms.Select(attrs={'class': 'form-control conta-select', 'id': 'conta'}),
+        empty_label="Selecione a conta"
+    )
+    condicao = forms.ModelChoiceField(
+        queryset=CondicaoCobranca.objects.all(),
+        widget=forms.Select(attrs={'class': 'form-control condicao-select', 'id': 'condicao'}),
+        empty_label="Selecione a condição de cobrança"
+    )
+    instrucao = forms.ModelChoiceField(
+        queryset=InstrucaoCobranca.objects.all(),
+        widget=forms.Select(attrs={'class': 'form-control instrucao-select', 'id': 'instrucao'}),
+        empty_label="Selecione a intrução de cobrança"
+    )
+    class Meta:
+        model   = ClienteCobranca
+        fields  = ['cliente','conta','condicao','instrucao']
+        labels  = {'condicao': 'Condição', 'instrucao': 'Instrução'}
+
+
 ############################# DEVOLUCAO #####################################
 from .models import Devolucao, ItemDevolucao
 from django.forms import inlineformset_factory, BaseInlineFormSet
@@ -653,11 +684,9 @@ from django.forms import inlineformset_factory, BaseInlineFormSet
 class DevolucaoForm(forms.ModelForm):
     class Meta:
         model = Devolucao
-        fields = ['locacao', 'data_devolucao', 'observacoes']
+        fields = ['observacoes']
         widgets = {
-            'data_devolucao': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'observacoes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
-            'locacao': forms.TextInput(attrs={'class': 'form-control', 'readonly': 'readonly'}),
         }
 
 class ItemDevolucaoForm(forms.ModelForm):
@@ -692,6 +721,48 @@ ItemDevolucaoFormSet = inlineformset_factory(
     can_delete=True
 )
 
+############################# COMBO #####################################
+class ComboForm(forms.ModelForm):
+    preco       = forms.CharField(required=True, label='Preço (R$)', widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Preço (R$)', 'id': 'id_preco', 'data-mask': 'money'}))
+    class Meta:
+        model   = Combo
+        fields  = ['nome', 'descricao', 'preco', 'custo']
+        labels  = {'descricao':'Descrição', 'custo':'Calcular custo dos produtos'}
+        widgets = {
+            'nome': forms.TextInput(attrs={'class': 'form-control'}),
+            'descricao': forms.TextInput(attrs={'class': 'form-control'}),
+            'preco': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Preço (R$)', 'id': 'id_preco', 'data-mask': 'money'}),
+            'custo': forms.CheckboxInput(attrs={'class': 'form-check-input', 'id': 'id_custo'}),
+        }
+
+    def clean_preco(self):
+        preco = self.cleaned_data.get('preco')
+        if preco:
+            preco = preco.replace('.', '').replace(',', '.')
+        else:
+            preco = 0
+        return float(preco)
+
+class ComboItemForm(forms.ModelForm):
+    combo = forms.ModelChoiceField(
+        queryset=Combo.objects.all(),
+        widget=forms.Select(attrs={'class': 'form-control', 'id': 'id_combo'}),
+        empty_label="Selecione o item"
+    )
+    produto = forms.ModelChoiceField(
+        queryset=CadProduto.objects.all(),
+        widget=forms.Select(attrs={'class': 'form-control', 'id': 'id_produto'}),
+        empty_label="Selecione o item"
+    )
+    quantidade = forms.DecimalField(
+        required=True,
+        min_value=0,
+        widget=forms.NumberInput(attrs={'class': 'form-control quantidade-input', 'placeholder': 'Quantidade', 'id': 'id_quantidade'})
+    )
+    class Meta:
+        model   = ComboItem
+        fields  = ['combo', 'produto', 'quantidade']
+
 ############################# ADMINISTRADOR #####################################
 from django.contrib.auth.models import Group
 
@@ -703,3 +774,189 @@ class GroupForm(forms.ModelForm):
             # Você pode estilizar o campo de nome
             'name': forms.TextInput(attrs={'class': 'form-control'}),
         }
+
+class ContasPagarForm(forms.ModelForm):
+    class Meta:
+        model = ContasPagar
+        fields = ['solicitacao', 'fornecedor', 'centro_custo', 'descricao', 'valor', 'forma_pagamento',
+                  'quantidade_parcelas', 'data_emissao', 'data_vencimento', 'status', 'observacoes', 'anexo', 'classificacao_despesa', 'recorrente']
+        widgets = {
+            'solicitacao': forms.Select(attrs={'class': 'form-select'}),
+            'fornecedor': forms.Select(attrs={'class': 'form-select'}),
+            'centro_custo': forms.Select(attrs={'class': 'form-select'}),
+            'descricao': forms.TextInput(attrs={'class': 'form-control', 'maxlength': 200, 'required': True}),
+            'valor': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0', 'required': True}),
+            'forma_pagamento': forms.Select(attrs={'class': 'form-select'}),
+            'quantidade_parcelas': forms.NumberInput(attrs={'class': 'form-control', 'min': '1', 'value': '1'}),
+            'data_emissao': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'data_vencimento': forms.DateInput(attrs={'class': 'form-control', 'type': 'date', 'required': True}),
+            'status': forms.Select(attrs={'class': 'form-select'}),
+            'observacoes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'anexo': forms.FileInput(attrs={'class': 'form-control'}),
+            'classificacao_despesa': forms.Select(attrs={'class': 'form-select'}),
+            'recorrente': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+        labels = {
+            'solicitacao': 'Solicitação de Compra',
+            'fornecedor': 'Fornecedor',
+            'centro_custo': 'Centro de Custo',
+            'descricao': 'Descrição',
+            'valor': 'Valor',
+            'forma_pagamento': 'Forma de Pagamento',
+            'quantidade_parcelas': 'Quantidade de Parcelas',
+            'data_emissao': 'Data de Emissão',
+            'data_vencimento': 'Data de Vencimento',
+            'status': 'Status',
+            'observacoes': 'Observações',
+            'anexo': 'Anexo',
+            'classificacao_despesa': 'Classificação de Despesa',
+            'recorrente': 'Recorrente',
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Configurar os querysets
+        self.fields['solicitacao'].queryset = SolicitacaoCompra.objects.all().order_by('-codigo')
+        self.fields['fornecedor'].queryset = CadFornecedor.objects.all().order_by('razao')
+        self.fields['centro_custo'].queryset = CentroCusto.objects.all().order_by('descricao')
+        self.fields['solicitacao'].required = False
+        self.fields['fornecedor'].required = False
+        self.fields['centro_custo'].required = False
+        self.fields['forma_pagamento'].required = False
+        self.fields['observacoes'].required = False
+        self.fields['anexo'].required = False
+        self.fields['classificacao_despesa'].required = False
+        
+        # Adicionar opção vazia nos selects
+        self.fields['solicitacao'].empty_label = "Selecione..."
+        self.fields['fornecedor'].empty_label = "Selecione..."
+        self.fields['centro_custo'].empty_label = "Selecione..."
+        self.fields['forma_pagamento'].empty_label = "Selecione..."
+        self.fields['classificacao_despesa'].empty_label = "Selecione..."
+
+
+class CentroCustoForm(forms.ModelForm):
+    class Meta:
+        model = CentroCusto
+        fields = ['descricao']
+        widgets = {
+            'descricao': forms.TextInput(attrs={'class': 'form-control', 'maxlength': 20, 'required': True}),
+        }
+        labels = {
+            'descricao': 'Descrição',
+        }
+
+############################ TROCA DE EQUIPAMENTOS ############################
+
+class TrocaEquipamentoForm(forms.ModelForm):
+    valor_original = forms.DecimalField(
+        label='Valor Original',
+        max_digits=10,
+        decimal_places=2,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'placeholder': '0.00',
+            'step': '0.01'
+        })
+    )
+    
+    valor_novo = forms.DecimalField(
+        label='Valor Novo',
+        max_digits=10,
+        decimal_places=2,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'placeholder': '0.00',
+            'step': '0.01'
+        })
+    )
+    
+    class Meta:
+        model = TrocaEquipamento
+        fields = ['observacoes']
+        widgets = {
+            'observacoes': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 4,
+                'placeholder': 'Motivo da troca e observações adicionais'
+            }),
+        }
+        labels = {
+            'observacoes': 'Observações',
+        }
+
+class ItemTrocaEquipamentoForm(forms.ModelForm):
+    produto_removido = forms.ModelChoiceField(
+        queryset=CadProduto.objects.all(),
+        label='Produto Removido',
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    
+    quantidade_removida = forms.IntegerField(
+        label='Quantidade Removida',
+        min_value=1,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'placeholder': '1'
+        })
+    )
+    
+    preco_removido = forms.DecimalField(
+        label='Preço Removido',
+        max_digits=10,
+        decimal_places=2,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'placeholder': '0.00',
+            'step': '0.01'
+        })
+    )
+    
+    item_estoque_removido = forms.ModelChoiceField(
+        queryset=ItensEstoque.objects.all(),
+        label='Item de Estoque (Removido)',
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    
+    produto_adicionado = forms.ModelChoiceField(
+        queryset=CadProduto.objects.all(),
+        label='Produto Adicionado',
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    
+    quantidade_adicionada = forms.IntegerField(
+        label='Quantidade Adicionada',
+        min_value=1,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'placeholder': '1'
+        })
+    )
+    
+    preco_adicionado = forms.DecimalField(
+        label='Preço Adicionado',
+        max_digits=10,
+        decimal_places=2,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'placeholder': '0.00',
+            'step': '0.01'
+        })
+    )
+    
+    item_estoque_adicionado = forms.ModelChoiceField(
+        queryset=ItensEstoque.objects.all(),
+        label='Item de Estoque (Adicionado)',
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    
+    class Meta:
+        model = ItemTrocaEquipamento
+        fields = [
+            'produto_removido', 'quantidade_removida', 'preco_removido', 'item_estoque_removido',
+            'produto_adicionado', 'quantidade_adicionada', 'preco_adicionado', 'item_estoque_adicionado'
+        ]

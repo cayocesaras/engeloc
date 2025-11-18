@@ -7,3 +7,5 @@ fpdf2
 plotly
 whitenoise
 psycopg2-binary
+plotly[express]
+pandas

@@ -84,4 +84,125 @@
     </div>
   </div>
 </div>
+
+<script>
+// Funções relacionadas a itens de solicitação de compra
+let itens = [];
+
+document.addEventListener("DOMContentLoaded", function() {
+    const btnAddItem = document.getElementById("btn-add-item");
+    if (btnAddItem) {
+        btnAddItem.addEventListener("click", function() {
+            let itemSelect = document.getElementById("item");
+            let quantidade = parseFloat(document.getElementById("quantidade").value) || 0;
+            let valorUnitario = parseFloat(document.getElementById("valor_unitario").value) || 0;
+            
+            if (!itemSelect || !itemSelect.value) {
+                alert('Por favor, selecione um item.');
+                return;
+            }
+            
+            if (quantidade <= 0) {
+                alert('Por favor, informe uma quantidade válida.');
+                return;
+            }
+            
+            if (valorUnitario <= 0) {
+                alert('Por favor, informe um valor unitário válido.');
+                return;
+            }
+            
+            let total = quantidade * valorUnitario;
+            
+            let obj = {
+                id: itemSelect.value,
+                nome: itemSelect.options[itemSelect.selectedIndex].text,
+                quantidade: quantidade,
+                valor_unitario: valorUnitario,
+                total: total
+            };
+            
+            itens.push(obj);
+            atualizarTabela();
+            atualizarValorTotal();
+            
+            // Limpar campos do modal
+            document.getElementById("item").value = "";
+            document.getElementById("quantidade").value = "";
+            document.getElementById("valor_unitario").value = "";
+            
+            // Fechar modal
+            var modal = bootstrap.Modal.getInstance(document.getElementById('itemModal'));
+            if (modal) {
+                modal.hide();
+            }
+        });
+    }
+    
+    // Atualizar valor total quando o formulário for submetido
+    const formSolicitacao = document.getElementById("form-solicitacao");
+    if (formSolicitacao) {
+        formSolicitacao.addEventListener("submit", function(e) {
+            if (itens.length === 0) {
+                alert('Por favor, adicione pelo menos um item à solicitação.');
+                e.preventDefault();
+                return false;
+            }
+            
+            // Garantir que o valor total está atualizado antes de enviar
+            atualizarValorTotal();
+        });
+    }
+    
+    // Inicializar valor total como 0,00
+    atualizarValorTotal();
+});
+
+function atualizarTabela() {
+    let tbody = document.querySelector("#tabela-itens tbody");
+    if (tbody) {
+        tbody.innerHTML = "";
+        itens.forEach((i, index) => {
+            tbody.innerHTML += `
+                <tr>
+                    <td>${i.nome}</td>
+                    <td>${i.quantidade}</td>
+                    <td>R$ ${i.valor_unitario.toFixed(2).replace('.', ',')}</td>
+                    <td>R$ ${i.total.toFixed(2).replace('.', ',')}</td>
+                    <td><button type="button" class="btn btn-danger btn-sm" onclick="removerItem(${index})"><i class="bi bi-trash"></i></button></td>
+                </tr>
+            `;
+        });
+    }
+    
+    const itensJson = document.getElementById("itens_json");
+    if (itensJson) {
+        itensJson.value = JSON.stringify(itens);
+    }
+}
+
+function atualizarValorTotal() {
+    const valorTotalElement = document.getElementById("id_valor_total");
+    if (valorTotalElement) {
+        let total = itens.reduce((acc, i) => acc + i.total, 0);
+        // Formatar como moeda brasileira (com vírgula)
+        let valorFormatado = total.toFixed(2).replace('.', ',');
+        valorTotalElement.value = valorFormatado;
+        
+        // Aplicar máscara se disponível (jQuery mask)
+        if (typeof $ !== 'undefined' && $.fn.mask) {
+            $(valorTotalElement).unmask();
+            $(valorTotalElement).mask('000.000.000,00', { reverse: true });
+        }
+    }
+}
+
+function removerItem(index) {
+    if (index >= 0 && index < itens.length) {
+        itens.splice(index, 1);
+        atualizarTabela();
+        atualizarValorTotal();
+    }
+}
+</script>
 {% endblock %}

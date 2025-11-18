@@ -26,7 +26,7 @@
                     {% for cautela in cautelas %}
                     <tr>
                         <td>{{ cautela.codigo }}</td>
-                        <td>{{ cautela.locacao.id }}</td>
+                        <td>{{ cautela.locacao.codigo }}</td>
                         <td>{{ cautela.locacao.cliente }}</td>
                         <td>{{ cautela.motorista }}</td>
                         <td>{{ cautela.data|date:"d/m/Y H:i" }}</td>
